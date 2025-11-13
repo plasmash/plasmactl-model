@@ -120,6 +120,64 @@ func identifyStrategy(name string) (mergeStrategyType, mergeStrategyTarget) {
 	return s, t
 }
 
+// Layer names that should be in src/
+var layerNames = map[string]bool{
+	"platform":      true,
+	"interaction":   true,
+	"integration":   true,
+	"cognition":     true,
+	"conversation":  true,
+	"stabilization": true,
+	"foundation":    true,
+}
+
+// isLayerDirectory checks if a path is a layer directory
+func isLayerDirectory(path string) bool {
+	// Get the first segment of the path
+	segments := strings.Split(filepath.Clean(path), string(filepath.Separator))
+	if len(segments) == 0 {
+		return false
+	}
+	firstSegment := segments[0]
+	return layerNames[firstSegment]
+}
+
+// hasModernLayout checks if package has src/ directory with layers
+func hasModernLayout(pkgPath string) bool {
+	srcPath := filepath.Join(pkgPath, "src")
+	stat, err := os.Stat(srcPath)
+	if err != nil || !stat.IsDir() {
+		return false
+	}
+
+	// Check if src/ contains any layer directories
+	for layerName := range layerNames {
+		layerPath := filepath.Join(srcPath, layerName)
+		if _, err := os.Stat(layerPath); err == nil {
+			return true
+		}
+	}
+	return false
+}
+
+// adjustDestinationPath adjusts destination based on package layout
+// For legacy packages: layers go to src/, others stay at root
+// For modern packages: everything copied as-is
+func adjustDestinationPath(path string, isModernLayout bool) string {
+	if isModernLayout {
+		// Modern: keep path as-is
+		return path
+	}
+
+	// Legacy: if it's a layer, prefix with src/
+	if isLayerDirectory(path) {
+		return filepath.Join("src", path)
+	}
+
+	// Non-layer: keep at root
+	return path
+}
+
 // Builder struct, provides methods to merge packages into build
 type Builder struct {
 	action.WithLogger
@@ -268,6 +326,15 @@ func (b *Builder) build(ctx context.Context) error {
 			pkgName := items[i]
 			if pkgName != DependencyRoot {
 				pkgPath := filepath.Join(b.sourceDir, pkgName, targetsMap[pkgName])
+
+				// Detect package layout
+				isModern := hasModernLayout(pkgPath)
+				if isModern {
+					b.Log().Debug("package has modern layout with src/", "package", pkgName)
+				} else {
+					b.Log().Debug("package has legacy layout, normalizing layers to src/", "package", pkgName)
+				}
+
 				packageFs := os.DirFS(pkgPath)
 				strategies, ok := ps[pkgName]
 				err = fs.WalkDir(packageFs, ".", func(path string, d fs.DirEntry, err error) error {
@@ -282,17 +349,21 @@ func (b *Builder) build(ctx context.Context) error {
 
 					var conflictReslv mergeConflictResolve
 					finfo, _ := d.Info()
-					entry := &fsEntry{Prefix: pkgPath, Path: path, Entry: finfo, Excluded: false, From: pkgName}
+
+					// Adjust destination path based on layout
+					adjustedPath := adjustDestinationPath(path, isModern)
+
+					entry := &fsEntry{Prefix: pkgPath, Path: adjustedPath, Entry: finfo, Excluded: false, From: pkgName}
 
 					if !ok {
 						// No strategies for package. Proceed with default merge.
-						entriesTree, conflictReslv = addEntries(entriesTree, entriesMap, entry, path)
+						entriesTree, conflictReslv = addEntries(entriesTree, entriesMap, entry, adjustedPath)
 					} else {
-						entriesTree, conflictReslv = addStrategyEntries(strategies, entriesTree, entriesMap, entry, path)
+						entriesTree, conflictReslv = addStrategyEntries(strategies, entriesTree, entriesMap, entry, adjustedPath)
 					}
 
 					if b.logConflicts && !finfo.IsDir() {
-						b.logConflictResolve(conflictReslv, path, pkgName, entriesMap[path])
+						b.logConflictResolve(conflictReslv, adjustedPath, pkgName, entriesMap[adjustedPath])
 					}
 
 					return nil

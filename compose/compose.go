@@ -16,9 +16,9 @@ import (
 
 const (
 	// MainDir is a compose directory.
-	MainDir = ".compose"
+	MainDir = ".plasma/compose"
 	// BuildDir is a result directory of compose action.
-	BuildDir       = MainDir + "/build"
+	BuildDir       = MainDir + "/image"
 	composeFile    = "plasma-compose.yaml"
 	dirPermissions = 0755
 )
