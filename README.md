@@ -1,112 +1,240 @@
-## Composition Tool Specification
+# plasmactl-compose
 
-The composition tool is a command-line tool that helps developers manage
-dependencies for their projects. It allows developers to specify the dependencies for
-a project in a "plasma-compose.yaml" file, and then fetches and installs those dependencies
-in a structured and organized way.
+A [Launchr](https://github.com/launchrctl/launchr) plugin for [Plasmactl](https://github.com/plasmash/plasmactl) that manages multi-package composition for Plasma platforms.
 
-The tool works by recursively fetching and processing the "plasma-compose.yaml" files for each package
-and its dependencies, and then merging the resulting filesystems into a single filesystem.
+## Overview
 
-### CLI
+`plasmactl-compose` enables building Plasma platforms from multiple packages and repositories. It recursively fetches dependencies defined in `plasma-compose.yaml` files and intelligently merges them into a unified platform structure.
 
-The composition tool is invoked from the command line with the following syntax:
-launchr compose [options]
-Where options are:
+## Features
 
-* -w, --working-dir : The directory where temporary files should be stored during the
-  composition process. Default is the .compose/packages
-* -s, --skip-not-versioned : Skip not versioned files from source directory (git only)
-* --conflicts-verbosity: Log files conflicts in format "[current-package] - path to file > Selected
-  from [domain, other package or current-package]"
-* --interactive: Interactive mode allows to submit user credentials during action (default: true)
+- **Multi-Package Composition**: Combine components from multiple repositories
+- **Recursive Dependency Resolution**: Automatically fetch and process package dependencies
+- **Smart File Merging**: Configurable strategies for handling file conflicts
+- **Version Control Integration**: Support for Git branches, tags, and HTTP sources
+- **Interactive Mode**: Prompt for credentials when needed
 
-Example usage - `launchr compose -w=./folder/something -s=1 or -s=true --conflicts-verbosity`
+## Usage
 
-It's important to note that: if same file is present locally and also brought by a package, default strategy is that
-local file will be taken and package file
-ignored. [Different strategies](https://github.com/launchrctl/compose/blob/main/example/compose.example.yaml#L18-L35)
-can be difined to customize this behavior to your needs.
+### Basic Composition
 
-### `plasma-compose.yaml` File Format
+```bash
+plasmactl compose
+```
 
-The "plasma-compose.yaml" file is a text file that specifies the dependencies for a package, along with any necessary
-metadata and sources for those dependencies.
-The file format includes the following elements:
+### Advanced Options
 
-- name: The name of the package.
-- version: The version number of the package.
-- source: The source for the package, including the type of source (Git, HTTP), URL or file path, merge strategy and
-  other metadata.
-- dependencies: A list of required dependencies.
+```bash
+plasmactl compose \
+  --working-dir ./custom-dir \
+  --skip-not-versioned \
+  --conflicts-verbosity \
+  --interactive=false
+```
 
-List of strategies:
+### Command Options
 
-- overwrite-local-file
-- remove-extra-local-files
-- ignore-extra-package-files
-- filter-package-files
+- `-w, --working-dir`: Directory for temporary files (default: `.compose/packages`)
+- `-s, --skip-not-versioned`: Skip unversioned files from source (git only)
+- `--conflicts-verbosity`: Log file conflicts during composition
+- `--interactive`: Enable interactive credential prompts (default: `true`)
 
-Example:
+## Configuration File
+
+### `plasma-compose.yaml` Format
+
+Define platform dependencies in a `plasma-compose.yaml` file:
 
 ```yaml
-name: example
+name: my-platform
+version: 1.0.0
 dependencies:
-  - name: compose-example
+  - name: pla-plasma
     source:
       type: git
-      ref: master # branch or tag name
-      url: https://github.com/example/compose-example.git
+      ref: main  # branch or tag
+      url: https://github.com/plasmash/pla-plasma.git
+
+  - name: custom-package
+    source:
+      type: git
+      ref: v2.1.0
+      url: https://github.com/example/custom-package.git
       strategy:
-        - name: remove-extra-local-files
+        - name: overwrite-local-file
           path:
-            - path/to/remove-extra-local-files
+            - config/override.yaml
         - name: ignore-extra-package-files
           path:
-            - library/inventories/platform_nodes/configuration/dev.yaml
-            - library/inventories/platform_nodes/configuration/prod.yaml
-            - library/inventories/platform_nodes/configuration/whatever.yaml
+            - library/inventories/*.yaml
 ```
 
-### Fetching and Installing Dependencies
+### Merge Strategies
 
-The composition tool fetches and installs dependencies for a package by recursively processing the "plasma-compose.yaml"
-files for each package and its dependencies. The tool follows these general steps:
+Control how files are merged when conflicts occur:
 
-1. Check if package exists locally and is up-to-date. If it's not, remove it from packages dir and proceed to next step.
-2. Fetch the package from the specified location.
-3. Extract the package contents to a packages directory.
-4. Process the "plasma-compose.yaml" file for the package, fetching and installing any necessary dependencies
-   recursively.
-5. Merge the package filesystem into the final platform filesystem.
-6. Repeat steps 1-5 for each package and its dependencies.
-
-During this process, the composition tool keeps track of the dependencies for each package.
-
-### Plasma-compose commands
-
-it's possible to manipulate plasma-compose.yaml file using commands:
-
-- plasmactl compose:add
-- plasmactl compose:update
-- plasmactl compose:delete
-
-For `compose:add` and `compose:update` there are 2 ways to submit data. With or without flags.
-Passing `--package` and `--url` to add command will automatically update plasma-compose file.
-For update command only `--package` required to update from CLI.
-
-For `compose:delete` it's possible to pass list of packaged to delete.
-
-In other cases, user will be prompted to CLI form to fill necessary data of packages.
-
-Examples of usage
-
+#### `overwrite-local-file`
+Replace local files with package files at specified paths:
+```yaml
+strategy:
+  - name: overwrite-local-file
+    path:
+      - config/settings.yaml
+      - templates/*.j2
 ```
-launchr compose:add --url some-url --type http
-launchr compose:add --package package-name --url some-url --ref v1.0.0
-launchr compose:update --package package-name --url some-url --ref v1.0.0
 
-launchr compose:add --package package-name --url some-url --ref v1.0.0 --strategy overwrite-local-file --strategy-path "path1|path2"
-launchr compose:add --package package-name --url some-url --ref branch --strategy overwrite-local-file,remove-extra-local-files --strategy-path "path1|path2,path3|path4"
-launchr compose:add --package package-name --url some-url --ref v1.0.0 --strategy overwrite-local-file --strategy-path "path1|path2" --strategy remove-extra-local-files --strategy-path "path3|path4"
+#### `remove-extra-local-files`
+Remove local files not present in the package:
+```yaml
+strategy:
+  - name: remove-extra-local-files
+    path:
+      - generated/
 ```
+
+#### `ignore-extra-package-files`
+Preserve local files, ignore package versions:
+```yaml
+strategy:
+  - name: ignore-extra-package-files
+    path:
+      - library/inventories/**/*.yaml
+      - secrets/vault.yaml
+```
+
+#### `filter-package-files`
+Selectively include package files:
+```yaml
+strategy:
+  - name: filter-package-files
+    path:
+      - specific/required/*.yaml
+```
+
+**Default Behavior**: Without strategies, local files take precedence over package files.
+
+## Composition Process
+
+1. **Check Cache**: Verify if packages exist locally and are up-to-date
+2. **Fetch Packages**: Download from Git, HTTP, or other sources
+3. **Extract Contents**: Unpack packages to working directory
+4. **Process Dependencies**: Recursively process `plasma-compose.yaml` files
+5. **Merge Filesystems**: Combine packages using configured strategies
+6. **Repeat**: Process all dependencies recursively
+
+## Package Management Commands
+
+### Add Package
+
+```bash
+# Interactive mode
+plasmactl compose:add
+
+# With flags
+plasmactl compose:add \
+  --package my-package \
+  --url https://github.com/example/package.git \
+  --ref v1.0.0 \
+  --type git
+```
+
+### Update Package
+
+```bash
+# Interactive mode
+plasmactl compose:update
+
+# With flags
+plasmactl compose:update \
+  --package my-package \
+  --url https://github.com/example/package.git \
+  --ref v2.0.0
+```
+
+### Delete Package
+
+```bash
+plasmactl compose:delete my-package other-package
+```
+
+### Strategy Examples
+
+Add package with merge strategies:
+
+```bash
+# Single strategy
+plasmactl compose:add \
+  --package my-package \
+  --url https://github.com/example/package.git \
+  --ref main \
+  --strategy overwrite-local-file \
+  --strategy-path "path1|path2"
+
+# Multiple strategies
+plasmactl compose:add \
+  --package my-package \
+  --url https://github.com/example/package.git \
+  --ref main \
+  --strategy overwrite-local-file,remove-extra-local-files \
+  --strategy-path "path1|path2,path3|path4"
+
+# Multiple strategy definitions
+plasmactl compose:add \
+  --package my-package \
+  --url https://github.com/example/package.git \
+  --ref v1.0.0 \
+  --strategy overwrite-local-file \
+  --strategy-path "path1|path2" \
+  --strategy remove-extra-local-files \
+  --strategy-path "path3|path4"
+```
+
+## Workflow Example
+
+```bash
+# 1. Define dependencies in plasma-compose.yaml
+
+# 2. Fetch and compose all packages
+plasmactl compose --conflicts-verbosity
+
+# 3. Verify composition
+ls .compose/packages/
+
+# 4. Proceed with bump and deployment
+plasmactl bump --sync
+plasmactl ship dev platform.interaction.observability
+```
+
+## Source Types
+
+### Git Repositories
+```yaml
+source:
+  type: git
+  ref: main  # or tag: v1.0.0
+  url: https://github.com/organization/repo.git
+```
+
+### HTTP Archives
+```yaml
+source:
+  type: http
+  url: https://example.com/package.tar.gz
+```
+
+## Best Practices
+
+1. **Pin Versions**: Use specific tags or commit SHAs instead of branch names for reproducible builds
+2. **Document Strategies**: Comment why specific merge strategies are used
+3. **Version Control**: Commit `plasma-compose.yaml` to track platform composition
+4. **Test Locally**: Run `compose` before `bump --sync` to catch issues early
+
+## Documentation
+
+- [Plasmactl](https://github.com/plasmash/plasmactl) - Main CLI tool
+- [Plasma Platform](https://plasma.sh) - Platform documentation
+- [Full Merge Strategy Examples](https://github.com/launchrctl/compose/blob/main/example/compose.example.yaml)
+
+## License
+
+Apache License 2.0
