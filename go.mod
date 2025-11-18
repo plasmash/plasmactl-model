@@ -1,4 +1,4 @@
-module github.com/launchrctl/compose
+module github.com/plasmash/plasmactl-compose
 
 go 1.25.0
 
