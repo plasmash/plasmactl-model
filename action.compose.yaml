@@ -1,8 +1,8 @@
 runtime: plugin
 action:
-  title: Compose
+  title: "Package: Compose"
   description: >-
-    Composes filesystem (files & dirs)
+    Composes packages from compose.yaml
   options:
     - name: working-dir
       shorthand: w

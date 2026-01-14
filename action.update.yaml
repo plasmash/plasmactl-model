@@ -1,8 +1,8 @@
 runtime: plugin
 action:
-  title: Compose update
+  title: "Package: Update"
   description: >-
-    Update a plasma-compose package
+    Update a package dependency in compose.yaml
   options:
     - name: package
       title: Name

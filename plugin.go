@@ -1,4 +1,4 @@
-// Package compose implements a launchr plugin to do platform composition
+// Package compose implements a launchr plugin for plasma package management
 package compose
 
 import (
@@ -13,7 +13,7 @@ import (
 	"github.com/launchrctl/launchr"
 	"github.com/launchrctl/launchr/pkg/action"
 
-	"github.com/launchrctl/compose/compose"
+	"github.com/plasmash/plasmactl-package/compose"
 )
 
 var (
@@ -53,8 +53,8 @@ func (p *Plugin) OnAppInit(app launchr.App) error {
 
 // DiscoverActions implements [launchr.ActionDiscoveryPlugin] interface.
 func (p *Plugin) DiscoverActions(_ context.Context) ([]*action.Action, error) {
-	// Action compose.
-	composeAction := action.NewFromYAML("compose", actionComposeYaml)
+	// Action package:compose.
+	composeAction := action.NewFromYAML("package:compose", actionComposeYaml)
 	composeAction.SetRuntime(action.NewFnRuntime(func(_ context.Context, a *action.Action) error {
 		input := a.Input()
 		log, term := getLogger(a)
@@ -83,8 +83,8 @@ func (p *Plugin) DiscoverActions(_ context.Context) ([]*action.Action, error) {
 		return c.RunInstall()
 	}))
 
-	// Action compose:add.
-	addAction := action.NewFromYAML("compose:add", actionAddYaml)
+	// Action package:add.
+	addAction := action.NewFromYAML("package:add", actionAddYaml)
 	addAction.SetRuntime(action.NewFnRuntime(func(_ context.Context, a *action.Action) error {
 		input := a.Input()
 		if err := packagePreRunValidate(input); err != nil {
@@ -98,8 +98,8 @@ func (p *Plugin) DiscoverActions(_ context.Context) ([]*action.Action, error) {
 		return fa.AddPackage(createNew, composeDependency, strategies, p.wd)
 	}))
 
-	// Action compose:update.
-	updateAction := action.NewFromYAML("compose:update", actionUpdateYaml)
+	// Action package:update.
+	updateAction := action.NewFromYAML("package:update", actionUpdateYaml)
 	updateAction.SetRuntime(action.NewFnRuntime(func(_ context.Context, a *action.Action) error {
 		input := a.Input()
 		if err := packagePreRunValidate(input); err != nil {
@@ -116,8 +116,8 @@ func (p *Plugin) DiscoverActions(_ context.Context) ([]*action.Action, error) {
 		return fa.UpdatePackages(p.wd)
 	}))
 
-	// Action compose:delete.
-	deleteAction := action.NewFromYAML("compose:delete", actionDeleteYaml)
+	// Action package:delete.
+	deleteAction := action.NewFromYAML("package:delete", actionDeleteYaml)
 	deleteAction.SetRuntime(action.NewFnRuntime(func(_ context.Context, a *action.Action) error {
 		input := a.Input()
 		toDeletePackages := action.InputOptSlice[string](input, "packages")

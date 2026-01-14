@@ -1,8 +1,8 @@
 runtime: plugin
 action:
-  title: Compose delete
+  title: "Package: Delete"
   description: >-
-    Remove a package from plasma-compose
+    Remove a package dependency from compose.yaml
   options:
     - name: packages
       title: Packages
