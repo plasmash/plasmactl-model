@@ -1,14 +1,14 @@
-# plasmactl-compose Layout Detection - CORRECTED Implementation Plan
+# plasmactl-package Layout Detection - CORRECTED Implementation Plan
 
 ## Key Corrections
 
 ### 1. This is for Open Source, Not Skilld
-- This plasmactl-compose repo is for **plasmash/open source**
+- This plasmactl-package repo is for **plasmash/open source**
 - Skilld teams use their own version (skilld-labs)
 - **No backward compatibility needed** - we can break things
 
 ### 2. Always Output to Modern Structure
-- **ALWAYS** output to `.plasma/compose/image/src/`
+- **ALWAYS** output to `.plasma/package/compose/merged/src/`
 - No conditional logic based on package types
 - Clean, simple, consistent
 
@@ -21,11 +21,11 @@
 
 ### What Compose Does
 ```
-Input: Downloaded packages in .compose/packages/
+Input: Downloaded packages in .plasma/package/compose/packages/
   ├── package1/target/ (legacy: platform/, interaction/ at root)
   └── package2/target/ (modern: src/platform/, src/interaction/)
 
-Output: .plasma/compose/image/src/
+Output: .plasma/package/compose/merged/src/
   ├── platform/      (merged from all packages)
   ├── interaction/
   └── ...
@@ -49,10 +49,10 @@ Output: .plasma/compose/image/src/
 ```go
 const (
 	// MainDir is a compose directory.
-	MainDir = ".plasma/compose"  // Changed from .compose
+	MainDir = ".plasma/package/compose"  // Changed from .compose
 	// BuildDir is a result directory of compose action.
 	BuildDir = MainDir + "/image/src"  // ALWAYS output to src/
-	composeFile = "plasma-compose.yaml"
+	composeFile = "compose.yaml"
 	dirPermissions = 0755
 )
 ```
@@ -120,25 +120,25 @@ That's it! Simple and clean.
 
 ### For Legacy Package
 ```
-Input: .compose/packages/old-package/v1.0.0/
+Input: .plasma/package/compose/packages/old-package/v1.0.0/
   ├── platform/
   ├── interaction/
   └── ...
 
 Detection: No src/ directory → read from root
-Copy to: .plasma/compose/image/src/platform/, src/interaction/
+Copy to: .plasma/package/compose/merged/src/platform/, src/interaction/
 ```
 
 ### For Modern Package
 ```
-Input: .compose/packages/new-package/prepare/
+Input: .plasma/package/compose/packages/new-package/prepare/
   └── src/
       ├── platform/
       ├── interaction/
       └── ...
 
 Detection: Has src/ directory → read from src/
-Copy to: .plasma/compose/image/src/platform/, src/interaction/
+Copy to: .plasma/package/compose/merged/src/platform/, src/interaction/
 ```
 
 ### For Mixed Packages
@@ -151,29 +151,29 @@ Detection:
   - old-package: read from root
   - new-package: read from src/
 
-Output: .plasma/compose/image/src/
+Output: .plasma/package/compose/merged/src/
   └── platform/ (merged from both)
 ```
 
 ## Flow Diagram
 
 ```
-plasmactl compose
+plasmactl package:compose
   ↓
-Download packages to .compose/packages/{name}/{target}/
+Download packages to .plasma/package/compose/packages/{name}/{target}/
   ↓
 For each package:
   ├─ Detect layout (has src/ or not?)
   ├─ Read components from correct location
-  └─ Merge to .plasma/compose/image/src/
+  └─ Merge to .plasma/package/compose/merged/src/
   ↓
-Done! Output: .plasma/compose/image/src/{layers}/
+Done! Output: .plasma/package/compose/merged/src/{layers}/
 
 ---
 
 plasmactl prepare (separate step)
   ↓
-Input: .plasma/compose/image/src/{layers}/
+Input: .plasma/package/compose/merged/src/{layers}/
   ↓
 Copy platform files (env/, chassis.yaml if they exist)
 Create ansible.cfg
@@ -187,16 +187,16 @@ Output: .plasma/prepare/ (Ansible-ready)
 
 ### Step 1: Update Constants (2 minutes)
 ```bash
-cd ~/Sources/plasmactl-compose
+cd ~/Sources/plasmactl-package
 git checkout -b feature/layout-detection
 ```
 
 Edit `compose/compose.go` lines 18-24:
 ```go
 const (
-	MainDir = ".plasma/compose"
+	MainDir = ".plasma/package/compose"
 	BuildDir = MainDir + "/image/src"
-	composeFile = "plasma-compose.yaml"
+	composeFile = "compose.yaml"
 	dirPermissions = 0755
 )
 ```
@@ -255,9 +255,9 @@ Create test with ski-platform prepare branch.
 
 ```bash
 git add -A
-git commit -m "feat: add layout detection and output to .plasma/compose/image/src/
+git commit -m "feat: add layout detection and output to .plasma/package/compose/merged/src/
 
-- Always output to .plasma/compose/image/src/ directory
+- Always output to .plasma/package/compose/merged/src/ directory
 - Detect per-package layout (src/ vs root)
 - Read components from correct location
 - Support mixed modern and legacy packages"
@@ -269,19 +269,19 @@ git commit -m "feat: add layout detection and output to .plasma/compose/image/sr
 ```bash
 cd ~/Sources/ski-platform
 git checkout prepare
-plasmactl compose
+plasmactl package:compose
 
 # Verify:
-ls .plasma/compose/image/
+ls .plasma/package/compose/merged/
 # Expected: src/ directory
 
-ls .plasma/compose/image/src/
+ls .plasma/package/compose/merged/src/
 # Expected: platform/, interaction/, etc.
 ```
 
 ### Test Case 2: Check Logs
 ```bash
-plasmactl compose --debug
+plasmactl package:compose --debug
 
 # Should see:
 # Package plasma-core: modern layout (reading from src/)
@@ -291,9 +291,9 @@ plasmactl compose --debug
 
 ## What We're NOT Doing
 
-❌ **No backward compatibility** - This is open source version, break away from .compose/build
+❌ **No backward compatibility** - This is open source version, break away from .plasma/package/compose/merged
 ❌ **No platform file handling** - That's prepare's job
-❌ **No conditional output paths** - Always .plasma/compose/image/src/
+❌ **No conditional output paths** - Always .plasma/package/compose/merged/src/
 ❌ **No checking if packages are modern** - Just detect per-package where to read from
 
 ## Benefits

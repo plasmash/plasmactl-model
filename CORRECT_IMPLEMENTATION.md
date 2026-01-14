@@ -1,8 +1,8 @@
-# plasmactl-compose Layout Detection - CORRECT Implementation
+# plasmactl-package Layout Detection - CORRECT Implementation
 
 ## The CORRECT Understanding
 
-### Output: .plasma/compose/image/
+### Output: .plasma/package/compose/merged/
 
 **We merge EVERYTHING from packages**, not just layers:
 
@@ -16,7 +16,7 @@ Input: package/
   ├── chassis.yaml
   └── other-files
 
-Output: .plasma/compose/image/
+Output: .plasma/package/compose/merged/
   ├── src/
   │   ├── platform/      (merged from package/src/)
   │   └── interaction/
@@ -36,7 +36,7 @@ Input: package/
   ├── chassis.yaml
   └── other-files
 
-Output: .plasma/compose/image/
+Output: .plasma/package/compose/merged/
   ├── src/               (NEW: created for normalization)
   │   ├── platform/      (MOVED from package root)
   │   └── interaction/   (MOVED from package root)
@@ -60,7 +60,7 @@ Input:
       ├── platform/        (at root)
       └── env/
 
-Output: .plasma/compose/image/
+Output: .plasma/package/compose/merged/
   ├── src/
   │   └── platform/        (merged from both: modern/src/ + legacy/ root)
   └── env/                 (merged from both packages)
@@ -97,9 +97,9 @@ Instead of detecting once and changing the base path, we need to **map each file
 
 ```go
 const (
-	MainDir = ".plasma/compose"
+	MainDir = ".plasma/package/compose"
 	BuildDir = MainDir + "/image"  // Just /image, not /image/src
-	composeFile = "plasma-compose.yaml"
+	composeFile = "compose.yaml"
 	dirPermissions = 0755
 )
 ```
@@ -286,7 +286,7 @@ err = fs.WalkDir(packageFs, ".", func(path string, d fs.DirEntry, err error) err
 
 ### Example 1: Modern Package
 ```
-Input: .compose/packages/plasma-core/prepare/
+Input: .plasma/package/compose/packages/plasma-core/prepare/
   ├── src/
   │   ├── platform/applications/
   │   └── interaction/services/
@@ -300,7 +300,7 @@ Process:
   - env/ski-dev/ → env/ski-dev/ (no adjustment)
   - chassis.yaml → chassis.yaml (no adjustment)
 
-Output: .plasma/compose/image/
+Output: .plasma/package/compose/merged/
   ├── src/
   │   ├── platform/applications/
   │   └── interaction/services/
@@ -310,7 +310,7 @@ Output: .plasma/compose/image/
 
 ### Example 2: Legacy Package
 ```
-Input: .compose/packages/old-package/v1.0.0/
+Input: .plasma/package/compose/packages/old-package/v1.0.0/
   ├── platform/applications/      (layer at root!)
   ├── interaction/services/       (layer at root!)
   ├── env/dev/
@@ -323,7 +323,7 @@ Process:
   - env/dev/ → env/dev/ (not a layer, stays at root)
   - config.yaml → config.yaml (not a layer, stays at root)
 
-Output: .plasma/compose/image/
+Output: .plasma/package/compose/merged/
   ├── src/                        (CREATED for layers!)
   │   ├── platform/applications/
   │   └── interaction/services/
@@ -347,7 +347,7 @@ Process:
   - legacy-pkg: platform/app2/ → src/platform/app2/ (ADJUSTED!)
   - legacy-pkg: env/ → env/
 
-Output: .plasma/compose/image/
+Output: .plasma/package/compose/merged/
   ├── src/
   │   └── platform/
   │       ├── app1/               (from modern)
@@ -359,12 +359,12 @@ Output: .plasma/compose/image/
 
 ### Step 1: Create Branch
 ```bash
-cd ~/Sources/plasmactl-compose
+cd ~/Sources/plasmactl-package
 git checkout -b feature/layout-detection
 ```
 
 ### Step 2: Update compose.go
-Change BuildDir constant to `.plasma/compose/image`
+Change BuildDir constant to `.plasma/package/compose/merged`
 
 ### Step 3: Add Helper Functions to builder.go
 Add `layerNames`, `isLayerDirectory()`, `hasModernLayout()`, `adjustDestinationPath()`
@@ -376,12 +376,12 @@ Add layout detection and use `adjustDestinationPath()` for entries
 ```bash
 cd ~/Sources/ski-platform
 git checkout prepare
-plasmactl compose
+plasmactl package:compose
 
-ls .plasma/compose/image/
+ls .plasma/package/compose/merged/
 # Expected: src/, env/, chassis.yaml, etc.
 
-ls .plasma/compose/image/src/
+ls .plasma/package/compose/merged/src/
 # Expected: platform/, interaction/, etc.
 ```
 
@@ -400,7 +400,7 @@ git commit -m "feat: normalize legacy packages to src/ layout
 ## Summary
 
 **What we're doing**:
-- ✅ Output to `.plasma/compose/image/` (not `/src`)
+- ✅ Output to `.plasma/package/compose/merged/` (not `/src`)
 - ✅ Merge EVERYTHING from packages (not just layers)
 - ✅ Detect per-package if it has src/
 - ✅ Modern: Copy as-is

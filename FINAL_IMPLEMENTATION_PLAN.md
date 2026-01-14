@@ -1,10 +1,10 @@
-# plasmactl-compose Layout Detection - FINAL Implementation Plan
+# plasmactl-package Layout Detection - FINAL Implementation Plan
 
 ## The Correct Understanding
 
 ### Output Structure
-- **Target directory**: `.plasma/compose/image/` (base output)
-- **Components go to**: `.plasma/compose/image/src/` (normalized)
+- **Target directory**: `.plasma/package/compose/merged/` (base output)
+- **Components go to**: `.plasma/package/compose/merged/src/` (normalized)
 - **Normalization**: ALL packages → src/ (regardless of their source layout)
 
 ### The Flow
@@ -19,11 +19,11 @@ Compose Process:
    - YES → Read from package/src/
    - NO  → Read from package/ (root)
 
-2. Write: Always to .plasma/compose/image/src/
-   - old-package: platform/ → .plasma/compose/image/src/platform/
-   - new-package: src/platform/ → .plasma/compose/image/src/platform/
+2. Write: Always to .plasma/package/compose/merged/src/
+   - old-package: platform/ → .plasma/package/compose/merged/src/platform/
+   - new-package: src/platform/ → .plasma/package/compose/merged/src/platform/
 
-Output: .plasma/compose/image/src/
+Output: .plasma/package/compose/merged/src/
   ├── platform/      (merged from all packages, normalized)
   ├── interaction/
   └── ...
@@ -46,15 +46,15 @@ Output: .plasma/compose/image/src/
 ```go
 const (
 	// MainDir is a compose directory.
-	MainDir = ".plasma/compose"
+	MainDir = ".plasma/package/compose"
 	// BuildDir is a result directory of compose action.
 	BuildDir = MainDir + "/image"  // Base output (NOT including src/)
-	composeFile = "plasma-compose.yaml"
+	composeFile = "compose.yaml"
 	dirPermissions = 0755
 )
 ```
 
-**Note**: We output to `.plasma/compose/image` but will adjust the actual write path to `image/src/` in the builder.
+**Note**: We output to `.plasma/package/compose/merged` but will adjust the actual write path to `image/src/` in the builder.
 
 ### Change 2: Add Layout Detection Functions
 
@@ -102,7 +102,7 @@ func createBuilder(c *Composer, targetDir, sourceDir string, packages []*Package
 		c.WithLogger,
 		c.WithTerm,
 		c.pwd,
-		targetDir,  // Now points to .plasma/compose/image/src/
+		targetDir,  // Now points to .plasma/package/compose/merged/src/
 		sourceDir,
 		false,
 		false,
@@ -140,13 +140,13 @@ packageFs := os.DirFS(componentsPath)
 
 ### Example 1: Legacy Package
 ```
-Input: .compose/packages/old-package/v1.0.0/
+Input: .plasma/package/compose/packages/old-package/v1.0.0/
   ├── platform/
   │   └── applications/
   └── interaction/
 
 Detection: No src/ → read from root
-Output: .plasma/compose/image/src/
+Output: .plasma/package/compose/merged/src/
   ├── platform/
   │   └── applications/
   └── interaction/
@@ -154,13 +154,13 @@ Output: .plasma/compose/image/src/
 
 ### Example 2: Modern Package
 ```
-Input: .compose/packages/new-package/prepare/
+Input: .plasma/package/compose/packages/new-package/prepare/
   └── src/
       ├── platform/
       └── interaction/
 
 Detection: Has src/ → read from src/
-Output: .plasma/compose/image/src/
+Output: .plasma/package/compose/merged/src/
   ├── platform/
   └── interaction/
 ```
@@ -177,7 +177,7 @@ Detection:
   - old-package: read from root
   - new-package: read from src/
 
-Output: .plasma/compose/image/src/
+Output: .plasma/package/compose/merged/src/
   └── platform/
       ├── applications/ (from old-package root)
       └── services/ (from new-package src/)
@@ -189,7 +189,7 @@ Result: Both merged into src/, normalized!
 
 ### Step 1: Create Branch
 ```bash
-cd ~/Sources/plasmactl-compose
+cd ~/Sources/plasmactl-package
 git checkout -b feature/layout-detection
 git status
 ```
@@ -198,9 +198,9 @@ git status
 Edit `compose/compose.go` lines 18-20:
 ```go
 const (
-	MainDir = ".plasma/compose"
+	MainDir = ".plasma/package/compose"
 	BuildDir = MainDir + "/image"
-	composeFile = "plasma-compose.yaml"
+	composeFile = "compose.yaml"
 	dirPermissions = 0755
 )
 ```
@@ -273,23 +273,23 @@ packageFs := os.DirFS(componentsPath)
 ```bash
 cd ~/Sources/ski-platform
 git checkout prepare
-plasmactl compose
+plasmactl package:compose
 
 # Verify structure
-ls .plasma/compose/image/
+ls .plasma/package/compose/merged/
 # Expected: src/ directory
 
-ls .plasma/compose/image/src/
+ls .plasma/package/compose/merged/src/
 # Expected: platform/, interaction/, etc.
 ```
 
 ### Step 7: Commit
 ```bash
-cd ~/Sources/plasmactl-compose
+cd ~/Sources/plasmactl-package
 git add -A
 git commit -m "feat: normalize all packages to src/ layout in compose output
 
-- Output to .plasma/compose/image/src/ (always)
+- Output to .plasma/package/compose/merged/src/ (always)
 - Detect per-package layout (src/ vs root)
 - Read legacy packages from root
 - Read modern packages from src/
@@ -300,14 +300,14 @@ git commit -m "feat: normalize all packages to src/ layout in compose output
 ## Summary
 
 **What we're doing**:
-- ✅ Always output to `.plasma/compose/image/src/`
+- ✅ Always output to `.plasma/package/compose/merged/src/`
 - ✅ Detect package layout (has src/ or not)
 - ✅ Read from correct location (src/ or root)
 - ✅ Normalize everything to src/ in output
 - ✅ Profit from old packages without maintaining two layouts
 
 **What changes**:
-- Constants: `.plasma/compose/image` (base)
+- Constants: `.plasma/package/compose/merged` (base)
 - createBuilder: Add `/src` to targetDir
 - Detection: Check if package has src/
 - build(): Use detected path for reading
