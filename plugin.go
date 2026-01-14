@@ -13,7 +13,7 @@ import (
 	"github.com/launchrctl/launchr"
 	"github.com/launchrctl/launchr/pkg/action"
 
-	"github.com/launchrctl/compose/compose"
+	"github.com/plasmash/plasmactl-compose/compose"
 )
 
 var (
