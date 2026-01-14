@@ -1,10 +1,10 @@
-# plasmactl-compose
+# plasmactl-package
 
 A [Launchr](https://github.com/launchrctl/launchr) plugin for [Plasmactl](https://github.com/plasmash/plasmactl) that manages multi-package composition for Plasma platforms.
 
 ## Overview
 
-`plasmactl-compose` enables building Plasma platforms from multiple packages and repositories. It recursively fetches dependencies defined in `plasma-compose.yaml` files and intelligently merges them into a unified platform structure.
+`plasmactl-package` enables building Plasma platforms from multiple packages and repositories. It recursively fetches dependencies defined in `compose.yaml` files and intelligently merges them into a unified platform structure.
 
 ## Features
 
@@ -19,13 +19,13 @@ A [Launchr](https://github.com/launchrctl/launchr) plugin for [Plasmactl](https:
 ### Basic Composition
 
 ```bash
-plasmactl compose
+plasmactl package:compose
 ```
 
 ### Advanced Options
 
 ```bash
-plasmactl compose \
+plasmactl package:compose \
   --working-dir ./custom-dir \
   --skip-not-versioned \
   --conflicts-verbosity \
@@ -41,9 +41,9 @@ plasmactl compose \
 
 ## Configuration File
 
-### `plasma-compose.yaml` Format
+### `compose.yaml` Format
 
-Define platform dependencies in a `plasma-compose.yaml` file:
+Define platform dependencies in a `compose.yaml` file:
 
 ```yaml
 name: my-platform
@@ -118,7 +118,7 @@ strategy:
 1. **Check Cache**: Verify if packages exist locally and are up-to-date
 2. **Fetch Packages**: Download from Git, HTTP, or other sources
 3. **Extract Contents**: Unpack packages to working directory
-4. **Process Dependencies**: Recursively process `plasma-compose.yaml` files
+4. **Process Dependencies**: Recursively process `compose.yaml` files
 5. **Merge Filesystems**: Combine packages using configured strategies
 6. **Repeat**: Process all dependencies recursively
 
@@ -128,10 +128,10 @@ strategy:
 
 ```bash
 # Interactive mode
-plasmactl compose:add
+plasmactl package:add
 
 # With flags
-plasmactl compose:add \
+plasmactl package:add \
   --package my-package \
   --url https://github.com/example/package.git \
   --ref v1.0.0 \
@@ -142,10 +142,10 @@ plasmactl compose:add \
 
 ```bash
 # Interactive mode
-plasmactl compose:update
+plasmactl package:update
 
 # With flags
-plasmactl compose:update \
+plasmactl package:update \
   --package my-package \
   --url https://github.com/example/package.git \
   --ref v2.0.0
@@ -154,7 +154,7 @@ plasmactl compose:update \
 ### Delete Package
 
 ```bash
-plasmactl compose:delete my-package other-package
+plasmactl package:delete my-package other-package
 ```
 
 ### Strategy Examples
@@ -163,7 +163,7 @@ Add package with merge strategies:
 
 ```bash
 # Single strategy
-plasmactl compose:add \
+plasmactl package:add \
   --package my-package \
   --url https://github.com/example/package.git \
   --ref main \
@@ -171,7 +171,7 @@ plasmactl compose:add \
   --strategy-path "path1|path2"
 
 # Multiple strategies
-plasmactl compose:add \
+plasmactl package:add \
   --package my-package \
   --url https://github.com/example/package.git \
   --ref main \
@@ -179,7 +179,7 @@ plasmactl compose:add \
   --strategy-path "path1|path2,path3|path4"
 
 # Multiple strategy definitions
-plasmactl compose:add \
+plasmactl package:add \
   --package my-package \
   --url https://github.com/example/package.git \
   --ref v1.0.0 \
@@ -192,17 +192,17 @@ plasmactl compose:add \
 ## Workflow Example
 
 ```bash
-# 1. Define dependencies in plasma-compose.yaml
+# 1. Define dependencies in compose.yaml
 
 # 2. Fetch and compose all packages
-plasmactl compose --conflicts-verbosity
+plasmactl package:compose --conflicts-verbosity
 
 # 3. Verify composition
 ls .compose/packages/
 
 # 4. Proceed with bump and deployment
-plasmactl bump --sync
-plasmactl ship dev platform.interaction.observability
+plasmactl component:bump && plasmactl component:sync
+plasmactl platform:ship dev platform.interaction.observability
 ```
 
 ## Source Types
@@ -226,14 +226,14 @@ source:
 
 1. **Pin Versions**: Use specific tags or commit SHAs instead of branch names for reproducible builds
 2. **Document Strategies**: Comment why specific merge strategies are used
-3. **Version Control**: Commit `plasma-compose.yaml` to track platform composition
-4. **Test Locally**: Run `compose` before `bump --sync` to catch issues early
+3. **Version Control**: Commit `compose.yaml` to track platform composition
+4. **Test Locally**: Run `package:compose` before `component:bump` to catch issues early
 
 ## Documentation
 
 - [Plasmactl](https://github.com/plasmash/plasmactl) - Main CLI tool
 - [Plasma Platform](https://plasma.sh) - Platform documentation
-- [Full Merge Strategy Examples](https://github.com/launchrctl/compose/blob/main/example/compose.example.yaml)
+- [Full Merge Strategy Examples](https://github.com/plasmash/plasmactl-package/blob/main/example/compose.example.yaml)
 
 ## License
 
