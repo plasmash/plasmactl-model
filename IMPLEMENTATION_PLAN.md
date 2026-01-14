@@ -1,4 +1,4 @@
-# plasmactl-compose Layout Detection Implementation Plan
+# plasmactl-package Layout Detection Implementation Plan
 
 ## Code Review Summary
 
@@ -6,7 +6,7 @@
 
 **File Structure**:
 ```
-plasmactl-compose/
+plasmactl-package/
 ├── compose/
 │   ├── compose.go         # Main Composer with Install() method
 │   ├── builder.go         # Builder with build() - does the actual merging
@@ -20,19 +20,19 @@ plasmactl-compose/
 
 **Current Flow**:
 1. `Composer.Install()` is called (compose.go:148)
-2. Downloads packages to `.compose/packages/{packageName}/{target}/`
+2. Downloads packages to `.plasma/package/compose/packages/{packageName}/{target}/`
 3. Creates `Builder` with:
-   - `targetDir`: `.compose/build/` (hardcoded constant)
-   - `sourceDir`: `.compose/packages/`
+   - `targetDir`: `.plasma/package/compose/merged/` (hardcoded constant)
+   - `sourceDir`: `.plasma/package/compose/packages/`
    - `packages`: Downloaded package list
-4. `Builder.build()` walks through packages and merges to `.compose/build/`
+4. `Builder.build()` walks through packages and merges to `.plasma/package/compose/merged/`
 
 **Key Constants** (compose.go:18-24):
 ```go
 const (
-    MainDir = ".compose"
-    BuildDir = MainDir + "/build"  // Currently: .compose/build
-    composeFile = "plasma-compose.yaml"
+    MainDir = ".plasma/package/compose"
+    BuildDir = MainDir + "/build"  // Currently: .plasma/package/compose/merged
+    composeFile = "compose.yaml"
     dirPermissions = 0755
 )
 ```
@@ -40,7 +40,7 @@ const (
 **Merging Logic** (builder.go:183-345):
 - Walks platform dir first (domain repo)
 - Then walks each package in dependency order
-- Copies files to `targetDir` (.compose/build)
+- Copies files to `targetDir` (.plasma/package/compose/merged)
 - Handles merge strategies and conflicts
 - **Key**: Line 270 `pkgPath := filepath.Join(b.sourceDir, pkgName, targetsMap[pkgName])`
   - This is where package content is read from
@@ -61,7 +61,7 @@ const (
 - More invasive, affects yaml.go
 
 **Option 3: Change Output Constants**
-- Change `BuildDir` from `.compose/build` to `.plasma/compose/image`
+- Change `BuildDir` from `.plasma/package/compose/merged` to `.plasma/package/compose/merged`
 - Detect if ANY package is modern, output to `src/` subdirectory
 - Affects all users immediately
 
@@ -69,11 +69,11 @@ const (
 
 1. **New output structure** (if any package is modern):
    ```
-   .plasma/compose/image/src/  # Modern output
+   .plasma/package/compose/merged/src/  # Modern output
    ```
    vs
    ```
-   .compose/build/  # Legacy output (all packages are legacy)
+   .plasma/package/compose/merged/  # Legacy output (all packages are legacy)
    ```
 
 2. **Layout detection per package**:
@@ -241,10 +241,10 @@ Change BuildDir to match new .plasma structure:
 ```go
 const (
 	// MainDir is a compose directory.
-	MainDir = ".plasma/compose"  // Changed from .compose
+	MainDir = ".plasma/package/compose"  // Changed from .compose
 	// BuildDir is a result directory of compose action.
 	BuildDir       = MainDir + "/image"  // Changed from /build
-	composeFile    = "plasma-compose.yaml"
+	composeFile    = "compose.yaml"
 	dirPermissions = 0755
 )
 ```
@@ -320,7 +320,7 @@ func copyDir(src, dst string) error {
 
 ### Test 1: Legacy Package Only
 ```yaml
-# plasma-compose.yaml
+# compose.yaml
 dependencies:
   - name: old-package
     source:
@@ -329,7 +329,7 @@ dependencies:
 ```
 
 **Expected**:
-- Output to `.compose/build/` (legacy path)
+- Output to `.plasma/package/compose/merged/` (legacy path)
 - Components at root level
 - No src/ directory
 
@@ -343,9 +343,9 @@ dependencies:
 ```
 
 **Expected**:
-- Output to `.plasma/compose/image/src/`
+- Output to `.plasma/package/compose/merged/src/`
 - Components inside src/
-- Platform files (env/, chassis.yaml) at `.plasma/compose/image/` root
+- Platform files (env/, chassis.yaml) at `.plasma/package/compose/merged/` root
 
 ### Test 3: Mixed Packages
 ```yaml
@@ -361,7 +361,7 @@ dependencies:
 ```
 
 **Expected**:
-- Output to `.plasma/compose/image/src/`
+- Output to `.plasma/package/compose/merged/src/`
 - All components merged into src/ (normalized)
 - Platform files at root
 
@@ -370,7 +370,7 @@ dependencies:
 ### For Skilld Teams
 
 **No changes needed** if using only legacy packages:
-- Still outputs to `.compose/build/`
+- Still outputs to `.plasma/package/compose/merged/`
 - No src/ directory created
 - Everything works as before
 
@@ -379,7 +379,7 @@ dependencies:
 **When switching to modern packages**:
 1. Add one modern package to dependencies
 2. Compose automatically switches to modern output
-3. Update downstream tools to look in `.plasma/compose/image/` instead of `.compose/build/`
+3. Update downstream tools to look in `.plasma/package/compose/merged/` instead of `.plasma/package/compose/merged/`
 4. Prepare action handles both layouts automatically
 
 ## Implementation Checklist
@@ -402,8 +402,8 @@ dependencies:
 
 ## Questions / Decisions
 
-1. **Should we keep backward compatibility with `.compose/build`?**
-   - YES: If all packages are legacy, output to `.compose/build`
+1. **Should we keep backward compatibility with `.plasma/package/compose/merged`?**
+   - YES: If all packages are legacy, output to `.plasma/package/compose/merged`
    - This ensures Skilld teams don't break
 
 2. **What if platform repo also has src/ directory?**
@@ -415,7 +415,7 @@ dependencies:
    - Not needed initially - automatic detection is sufficient
    - Can add later if users request it
 
-4. **What about .compose/packages/ directory?**
+4. **What about .plasma/package/compose/packages/ directory?**
    - Keep as-is - this is just storage for downloaded packages
    - Layout detection happens at merge time, not download time
 
