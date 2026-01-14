@@ -4,7 +4,7 @@ package main
 import (
 	"github.com/launchrctl/launchr"
 
-	_ "github.com/launchrctl/compose"
+	_ "github.com/plasmash/plasmactl-compose"
 )
 
 func main() {
