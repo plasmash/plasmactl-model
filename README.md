@@ -34,7 +34,7 @@ plasmactl package:compose \
 
 ### Command Options
 
-- `-w, --working-dir`: Directory for temporary files (default: `.compose/packages`)
+- `-w, --working-dir`: Directory for temporary files (default: `.plasma/compose/packages`)
 - `-s, --skip-not-versioned`: Skip unversioned files from source (git only)
 - `--conflicts-verbosity`: Log file conflicts during composition
 - `--interactive`: Enable interactive credential prompts (default: `true`)
@@ -198,7 +198,7 @@ plasmactl package:add \
 plasmactl package:compose --conflicts-verbosity
 
 # 3. Verify composition
-ls .compose/packages/
+ls .plasma/compose/image/
 
 # 4. Proceed with bump and deployment
 plasmactl component:bump && plasmactl component:sync
