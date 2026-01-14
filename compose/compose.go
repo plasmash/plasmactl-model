@@ -18,7 +18,7 @@ const (
 	// MainDir is a compose directory.
 	MainDir = ".plasma/compose"
 	// BuildDir is a result directory of compose action.
-	BuildDir       = MainDir + "/image"
+	BuildDir       = MainDir + "/merged"
 	composeFile    = "compose.yaml"
 	dirPermissions = 0755
 )

@@ -198,7 +198,7 @@ plasmactl package:add \
 plasmactl package:compose --conflicts-verbosity
 
 # 3. Verify composition
-ls .plasma/compose/image/
+ls .plasma/compose/merged/
 
 # 4. Proceed with bump and deployment
 plasmactl component:bump && plasmactl component:sync
