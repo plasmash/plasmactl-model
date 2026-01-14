@@ -93,7 +93,7 @@ func (m DownloadManager) recursiveDownload(ctx context.Context, yc *YamlCompose,
 				return packages, err
 			}
 
-			// If package has plasma-compose.yaml, proceed with it
+			// If package has compose.yaml, proceed with it
 			if _, err = os.Stat(filepath.Join(packagePath, composeFile)); !os.IsNotExist(err) {
 				cfg, err := Lookup(os.DirFS(packagePath))
 				if err == nil {

@@ -19,12 +19,12 @@ const (
 	MainDir = ".plasma/compose"
 	// BuildDir is a result directory of compose action.
 	BuildDir       = MainDir + "/image"
-	composeFile    = "plasma-compose.yaml"
+	composeFile    = "compose.yaml"
 	dirPermissions = 0755
 )
 
 var (
-	errComposeNotExists = errors.New("plasma-compose.yaml doesn't exist")
+	errComposeNotExists = errors.New("compose.yaml doesn't exist")
 )
 
 type keyringWrapper struct {

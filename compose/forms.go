@@ -24,7 +24,7 @@ type FormsAction struct {
 	action.WithTerm
 }
 
-// AddPackage adds a new package to plasma-compose.
+// AddPackage adds a new package to compose.yaml.
 func (f *FormsAction) AddPackage(doCreate bool, newDependency *Dependency, rawStrategies *RawStrategies, dir string) error {
 	config, err := Lookup(os.DirFS(dir))
 	if err != nil {
@@ -79,14 +79,14 @@ func (f *FormsAction) AddPackage(doCreate bool, newDependency *Dependency, rawSt
 
 	sanitizeDependency(newDependency)
 	config.Dependencies = append(config.Dependencies, *newDependency)
-	f.Term().Println("Saving plasma-compose...")
+	f.Term().Println("Saving compose.yaml...")
 	sortPackages(config)
 	err = writeComposeYaml(config)
 
 	return err
 }
 
-// UpdatePackage updates a single package in plasma-compose.
+// UpdatePackage updates a single package in compose.yaml.
 func (f *FormsAction) UpdatePackage(dependency *Dependency, rawStrategies *RawStrategies, dir string) error {
 	config, err := Lookup(os.DirFS(dir))
 	if err != nil {
@@ -120,14 +120,14 @@ func (f *FormsAction) UpdatePackage(dependency *Dependency, rawStrategies *RawSt
 	}
 
 	sanitizeDependency(toUpdate)
-	f.Term().Println("Saving plasma-compose...")
+	f.Term().Println("Saving compose.yaml...")
 	sortPackages(config)
 	err = writeComposeYaml(config)
 
 	return err
 }
 
-// UpdatePackages updates packages in plasma-compose in interactive way.
+// UpdatePackages updates packages in compose.yaml in interactive way.
 func (f *FormsAction) UpdatePackages(dir string) error {
 	config, err := Lookup(os.DirFS(dir))
 	if err != nil {
@@ -184,7 +184,7 @@ func (f *FormsAction) UpdatePackages(dir string) error {
 		}
 	}
 
-	f.Term().Println("Saving plasma-compose...")
+	f.Term().Println("Saving compose.yaml...")
 	var newDeps []Dependency
 	for _, dep := range packagesMap {
 		newDeps = append(newDeps, *dep)
@@ -197,7 +197,7 @@ func (f *FormsAction) UpdatePackages(dir string) error {
 	return err
 }
 
-// DeletePackages removes packages plasma-compose.
+// DeletePackages removes packages compose.yaml.
 func (f *FormsAction) DeletePackages(packages []string, dir string) error {
 	config, err := Lookup(os.DirFS(dir))
 	if err != nil {
@@ -244,7 +244,7 @@ OUTER:
 	}
 
 	if saveRequired {
-		f.Term().Println("Updating plasma-compose...")
+		f.Term().Println("Updating compose.yaml...")
 		config.Dependencies = dependencies
 		sortPackages(config)
 		err = writeComposeYaml(config)

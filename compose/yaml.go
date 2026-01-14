@@ -12,7 +12,7 @@ import (
 const (
 	// TargetLatest is a fallback to the latest version.
 	TargetLatest           = "latest"
-	tplComposeBadStructure = "plasma-compose.yaml parsing failed - %w"
+	tplComposeBadStructure = "compose.yaml parsing failed - %w"
 )
 
 var (

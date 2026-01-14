@@ -1,12 +1,12 @@
 runtime: plugin
 action:
-  title: Compose add
+  title: "Package: Add"
   description: >-
-    Add a new package to plasma-compose
+    Add a package dependency to compose.yaml
   options:
     - name: allow-create
       title: Allow create
-      description: Create plasma-compose if not exist
+      description: Create compose.yaml if not exist
       type: boolean
       default: false
     - name: package

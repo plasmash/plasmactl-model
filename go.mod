@@ -1,4 +1,4 @@
-module github.com/plasmash/plasmactl-compose
+module github.com/plasmash/plasmactl-package
 
 go 1.25.0
 
