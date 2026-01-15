@@ -237,4 +237,4 @@ source:
 
 ## License
 
-Apache License 2.0
+[European Union Public License 1.2 (EUPL-1.2)](LICENSE)
