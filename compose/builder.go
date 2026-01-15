@@ -193,7 +193,8 @@ type Builder struct {
 
 type fsEntry struct {
 	Prefix   string
-	Path     string
+	SrcPath  string // Original source path within package
+	DstPath  string // Adjusted destination path (may have src/ prefix)
 	Entry    fs.FileInfo
 	Excluded bool
 	From     string
@@ -299,7 +300,7 @@ func (b *Builder) build(ctx context.Context) error {
 			}
 
 			finfo, _ := d.Info()
-			entry := &fsEntry{Prefix: b.platformDir, Path: path, Entry: finfo, Excluded: false, From: "domain repo"}
+			entry := &fsEntry{Prefix: b.platformDir, SrcPath: path, DstPath: path, Entry: finfo, Excluded: false, From: "domain repo"}
 			entriesTree = append(entriesTree, entry)
 			entriesMap[path] = entry
 			return nil
@@ -353,7 +354,7 @@ func (b *Builder) build(ctx context.Context) error {
 					// Adjust destination path based on layout
 					adjustedPath := adjustDestinationPath(path, isModern)
 
-					entry := &fsEntry{Prefix: pkgPath, Path: adjustedPath, Entry: finfo, Excluded: false, From: pkgName}
+					entry := &fsEntry{Prefix: pkgPath, SrcPath: path, DstPath: adjustedPath, Entry: finfo, Excluded: false, From: pkgName}
 
 					if !ok {
 						// No strategies for package. Proceed with default merge.
@@ -382,8 +383,8 @@ func (b *Builder) build(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			sourcePath := filepath.Join(treeItem.Prefix, treeItem.Path)
-			destPath := filepath.Join(b.targetDir, treeItem.Path)
+			sourcePath := filepath.Join(treeItem.Prefix, treeItem.SrcPath)
+			destPath := filepath.Join(b.targetDir, treeItem.DstPath)
 			isSymlink := false
 			permissions := os.FileMode(dirPermissions)
 
@@ -462,6 +463,8 @@ func addStrategyEntries(strategies []*mergeStrategy, entriesTree []*fsEntry, ent
 				entriesMap[path] = entry
 			} else if ensureStrategyPrefixPath(path, ms.paths) {
 				localMapEntry.Prefix = entry.Prefix
+				localMapEntry.SrcPath = entry.SrcPath
+				localMapEntry.DstPath = entry.DstPath
 				localMapEntry.Entry = entry.Entry
 				localMapEntry.From = entry.From
 
