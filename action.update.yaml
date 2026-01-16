@@ -1,8 +1,7 @@
 runtime: plugin
 action:
-  title: "Package: Update"
-  description: >-
-    Update a package dependency in compose.yaml
+  title: Update
+  description: "Update a package dependency in compose.yaml"
   options:
     - name: package
       title: Name

@@ -1,8 +1,7 @@
 runtime: plugin
 action:
-  title: "Package: Delete"
-  description: >-
-    Remove a package dependency from compose.yaml
+  title: Delete
+  description: "Remove a package dependency from compose.yaml"
   options:
     - name: packages
       title: Packages
