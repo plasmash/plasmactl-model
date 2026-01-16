@@ -6,9 +6,6 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
 
 	"github.com/launchrctl/keyring"
 	"github.com/launchrctl/launchr"
@@ -16,23 +13,6 @@ import (
 
 	"github.com/plasmash/plasmactl-package/compose"
 )
-
-// PlasmaIDProvider strips "src." prefix from action IDs.
-// This is needed because Plasma packages use src/ directory structure
-// for modern layout, but end users should not see this internal detail.
-type PlasmaIDProvider struct {
-	delegate action.IDProvider
-}
-
-// GetID implements [action.IDProvider] interface.
-func (p PlasmaIDProvider) GetID(a *action.Action) string {
-	id := p.delegate.GetID(a)
-	// Strip "src." prefix from action IDs for cleaner UX
-	if strings.HasPrefix(id, "src.") {
-		return strings.TrimPrefix(id, "src.")
-	}
-	return id
-}
 
 var (
 	//go:embed action.compose.yaml
@@ -64,16 +44,8 @@ func (p *Plugin) PluginInfo() launchr.PluginInfo {
 func (p *Plugin) OnAppInit(app launchr.App) error {
 	app.GetService(&p.k)
 	p.wd = app.GetWD()
-	buildDir := filepath.Join(p.wd, compose.BuildDir)
-	app.RegisterFS(action.NewDiscoveryFS(os.DirFS(buildDir), p.wd))
-
-	// Register custom IDProvider to strip "src." prefix from action IDs.
-	// This is needed because Plasma packages use src/ directory structure
-	// for modern layout, but end users should not see this internal detail.
-	var am action.Manager
-	app.GetService(&am)
-	am.SetActionIDProvider(PlasmaIDProvider{delegate: am.GetActionIDProvider()})
-
+	// Note: Discovery FS registration is handled by plasmactl core plugin
+	// which registers both ./src and .plasma/package/compose/merged/src
 	return nil
 }
 
