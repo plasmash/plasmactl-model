@@ -1,8 +1,7 @@
 runtime: plugin
 action:
-  title: "Package: Add"
-  description: >-
-    Add a package dependency to compose.yaml
+  title: Add
+  description: "Add a package dependency to compose.yaml"
   options:
     - name: allow-create
       title: Allow create
