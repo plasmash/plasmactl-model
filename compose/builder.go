@@ -163,7 +163,12 @@ func hasModernLayout(pkgPath string) bool {
 // adjustDestinationPath adjusts destination based on package layout
 // For legacy packages: layers go to src/, others stay at root
 // For modern packages: everything copied as-is
+// Also strips /roles/ from path to normalize to clean layout
 func adjustDestinationPath(path string, isModernLayout bool) string {
+	// Strip /roles/ from path: {layer}/{type}/roles/{component} -> {layer}/{type}/{component}
+	// This normalizes old package layout to the new clean layout
+	path = stripRolesFromPath(path)
+
 	if isModernLayout {
 		// Modern: keep path as-is
 		return path
@@ -175,6 +180,21 @@ func adjustDestinationPath(path string, isModernLayout bool) string {
 	}
 
 	// Non-layer: keep at root
+	return path
+}
+
+// stripRolesFromPath removes /roles/ segment from paths like {layer}/{type}/roles/{component}
+func stripRolesFromPath(path string) string {
+	const rolesSegment = string(filepath.Separator) + "roles" + string(filepath.Separator)
+	if idx := strings.Index(path, rolesSegment); idx != -1 {
+		// Remove the /roles/ segment
+		return path[:idx] + string(filepath.Separator) + path[idx+len(rolesSegment):]
+	}
+	// Also handle paths starting with roles/
+	const rolesPrefix = "roles" + string(filepath.Separator)
+	if strings.HasPrefix(path, rolesPrefix) {
+		return path[len(rolesPrefix):]
+	}
 	return path
 }
 
