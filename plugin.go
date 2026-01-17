@@ -6,6 +6,8 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/launchrctl/keyring"
 	"github.com/launchrctl/launchr"
@@ -44,8 +46,16 @@ func (p *Plugin) PluginInfo() launchr.PluginInfo {
 func (p *Plugin) OnAppInit(app launchr.App) error {
 	app.GetService(&p.k)
 	p.wd = app.GetWD()
-	// Note: Discovery FS registration is handled by plasmactl core plugin
-	// which registers both ./src and .plasma/package/compose/merged/src
+
+	// Register composed packages directory as a discovery root if it exists.
+	// This is needed because launchr skips hidden directories (starting with .)
+	// during discovery, so .plasma/ would be skipped otherwise.
+	// This replaces the old launchr-compose plugin's registration of .compose/build.
+	composePath := filepath.Join(p.wd, compose.BuildDir)
+	if stat, err := os.Stat(composePath); err == nil && stat.IsDir() {
+		app.RegisterFS(action.NewDiscoveryFS(os.DirFS(composePath), p.wd))
+	}
+
 	return nil
 }
 
