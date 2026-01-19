@@ -204,14 +204,25 @@ func stripRolesFromPath(path string) string {
 func normalizeGroupVarsToVariables(path string) string {
 	const groupVarsSegment = string(filepath.Separator) + "group_vars" + string(filepath.Separator)
 	const variablesSegment = string(filepath.Separator) + "variables" + string(filepath.Separator)
+	const groupVarsSuffix = string(filepath.Separator) + "group_vars"
+	const variablesSuffix = string(filepath.Separator) + "variables"
+	// Handle /group_vars/ in middle of path
 	if idx := strings.Index(path, groupVarsSegment); idx != -1 {
 		return path[:idx] + variablesSegment + path[idx+len(groupVarsSegment):]
 	}
-	// Also handle paths starting with group_vars/
+	// Handle paths ending with /group_vars
+	if strings.HasSuffix(path, groupVarsSuffix) {
+		return path[:len(path)-len(groupVarsSuffix)] + variablesSuffix
+	}
+	// Handle paths starting with group_vars/
 	const groupVarsPrefix = "group_vars" + string(filepath.Separator)
 	const variablesPrefix = "variables" + string(filepath.Separator)
 	if strings.HasPrefix(path, groupVarsPrefix) {
 		return variablesPrefix + path[len(groupVarsPrefix):]
+	}
+	// Handle path that is exactly "group_vars"
+	if path == "group_vars" {
+		return "variables"
 	}
 	return path
 }
