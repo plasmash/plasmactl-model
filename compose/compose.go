@@ -91,7 +91,7 @@ func (kw *keyringWrapper) getForURL(url string) (keyring.CredentialsItem, error)
 
 func (kw *keyringWrapper) fillCredentials(ci keyring.CredentialsItem) (keyring.CredentialsItem, error) {
 	if ci.URL != "" {
-		kw.Term().Printfln("Please add login and password for URL - %s", ci.URL)
+		kw.Term().Printfln("Credentials required for %s", ci.URL)
 	}
 	err := keyring.RequestCredentialsFromTty(&ci)
 	if err != nil {
@@ -183,7 +183,7 @@ func (c *Composer) prepareInstall(clean bool) (string, string, error) {
 	buildPath := c.getPath(BuildDir)
 	packagesPath := c.getPath(c.options.WorkingDir)
 
-	c.Term().Printfln("Cleaning build dir: %s", BuildDir)
+	c.Term().Printfln("Cleaning merge dir: %s", BuildDir)
 	err := os.RemoveAll(buildPath)
 	if err != nil {
 		return "", "", err

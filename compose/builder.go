@@ -260,7 +260,7 @@ func getVersionedMap(gitDir string) (map[string]bool, error) {
 }
 
 func (b *Builder) build(ctx context.Context) error {
-	b.Term().Println("Creating composition...")
+	b.Term().Println("Merging packages...")
 	err := EnsureDirExists(b.targetDir)
 	if err != nil {
 		return err
@@ -277,6 +277,12 @@ func (b *Builder) build(ctx context.Context) error {
 
 	ls, ps := retrieveStrategies(b.packages)
 	baseFs := os.DirFS(b.platformDir)
+
+	// Build package map for identifier lookup
+	packagesMap := make(map[string]*Package)
+	for _, p := range b.packages {
+		packagesMap[p.GetName()] = p
+	}
 
 	entriesMap := make(map[string]*fsEntry)
 	var entriesTree []*fsEntry
@@ -393,6 +399,11 @@ func (b *Builder) build(ctx context.Context) error {
 				if err != nil {
 					return err
 				}
+
+				// Print checkmark for merged package
+				if pkg, ok := packagesMap[pkgName]; ok {
+					b.Term().Printfln("  ✓ %s", pkg.GetIdentifier())
+				}
 			}
 		}
 	}
@@ -433,6 +444,7 @@ func (b *Builder) build(ctx context.Context) error {
 		}
 	}
 
+	b.Term().Println("Composition completed.")
 	return nil
 }
 

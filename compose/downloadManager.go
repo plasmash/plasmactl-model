@@ -55,6 +55,8 @@ func (m DownloadManager) Download(ctx context.Context, c *YamlCompose, targetDir
 	}
 
 	kw := m.getKeyring()
+	// Unlock keyring proactively to trigger passphrase prompt before output
+	_ = kw.keyringService.Unlock()
 	kw.Term().Println("Fetching packages...")
 	packages, err = m.recursiveDownload(ctx, c, packages, nil, targetDir)
 	if err != nil {
