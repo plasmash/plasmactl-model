@@ -79,7 +79,7 @@ func (f *FormsAction) AddPackage(doCreate bool, newDependency *Dependency, rawSt
 
 	sanitizeDependency(newDependency)
 	config.Dependencies = append(config.Dependencies, *newDependency)
-	f.Term().Println("Saving compose.yaml...")
+	f.Term().Printfln("Saving compose.yaml...")
 	sortPackages(config)
 	err = writeComposeYaml(config)
 
@@ -120,7 +120,7 @@ func (f *FormsAction) UpdatePackage(dependency *Dependency, rawStrategies *RawSt
 	}
 
 	sanitizeDependency(toUpdate)
-	f.Term().Println("Saving compose.yaml...")
+	f.Term().Printfln("Saving compose.yaml...")
 	sortPackages(config)
 	err = writeComposeYaml(config)
 
@@ -184,7 +184,7 @@ func (f *FormsAction) UpdatePackages(dir string) error {
 		}
 	}
 
-	f.Term().Println("Saving compose.yaml...")
+	f.Term().Printfln("Saving compose.yaml...")
 	var newDeps []Dependency
 	for _, dep := range packagesMap {
 		newDeps = append(newDeps, *dep)
@@ -244,12 +244,12 @@ OUTER:
 	}
 
 	if saveRequired {
-		f.Term().Println("Updating compose.yaml...")
+		f.Term().Printfln("Updating compose.yaml...")
 		config.Dependencies = dependencies
 		sortPackages(config)
 		err = writeComposeYaml(config)
 	} else {
-		f.Term().Println("Nothing to update, quiting")
+		f.Term().Printfln("Nothing to update, quiting")
 	}
 
 	return err
