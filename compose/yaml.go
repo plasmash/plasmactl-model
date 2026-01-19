@@ -3,6 +3,7 @@ package compose
 import (
 	"fmt"
 	"io/fs"
+	"net/url"
 	"os"
 	"strings"
 
@@ -104,6 +105,35 @@ func (p *Package) GetTarget() string {
 	}
 
 	return target
+}
+
+// GetIdentifier returns a Go-style package identifier: domain/path/name@ref
+// e.g., "projects.skilld.cloud/skilld/pla-plasma@prepare"
+func (p *Package) GetIdentifier() string {
+	rawURL := p.GetURL()
+	ref := p.GetRef()
+
+	// Parse URL to extract domain and path
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		// Fallback to name@ref if URL parsing fails
+		if ref != "" {
+			return p.Name + "@" + ref
+		}
+		return p.Name
+	}
+
+	// Build domain/path (strip .git suffix)
+	path := strings.TrimSuffix(parsed.Path, ".git")
+	path = strings.TrimPrefix(path, "/")
+	identifier := parsed.Host + "/" + path
+
+	// Append ref if present
+	if ref != "" {
+		identifier += "@" + ref
+	}
+
+	return identifier
 }
 
 // Lookup allows to search compose file, read and parse it.

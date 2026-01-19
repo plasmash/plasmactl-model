@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -29,7 +30,6 @@ func (g *gitDownloader) fetchRemotes(r *git.Repository, url string, refSpec []co
 		return errR
 	}
 
-	g.k.Term().Printfln("Fetching remote %s", url)
 	for _, rem := range remotes {
 		options := git.FetchOptions{
 			//RefSpecs: []config.RefSpec{"refs/*:refs/*", "HEAD:refs/heads/HEAD"},
@@ -98,7 +98,6 @@ func (g *gitDownloader) fetchRemotes(r *git.Repository, url string, refSpec []co
 				if err != nil {
 					if errors.Is(err, transport.ErrAuthorizationFailed) || errors.Is(err, transport.ErrAuthenticationRequired) {
 						if g.k.interactive {
-							g.k.Term().Println("invalid auth, trying manual authentication")
 							continue
 						}
 					}
@@ -271,8 +270,6 @@ func (g *gitDownloader) ensureLatestTag(r *git.Repository, fetchURL, refName str
 
 // Download implements Downloader.Download interface
 func (g *gitDownloader) Download(ctx context.Context, pkg *Package, targetDir string) error {
-	g.k.Term().Printfln("git fetch: %s", pkg.GetURL())
-
 	url := pkg.GetURL()
 	if url == "" {
 		return errNoURL
@@ -286,6 +283,7 @@ func (g *gitDownloader) Download(ctx context.Context, pkg *Package, targetDir st
 			return err
 		}
 
+		g.k.Term().Printfln("  ✓ %s", pkg.GetIdentifier())
 		return nil
 	}
 
@@ -315,13 +313,14 @@ func (g *gitDownloader) Download(ctx context.Context, pkg *Package, targetDir st
 		return fmt.Errorf("couldn't find remote ref %s", ref)
 	}
 
+	g.k.Term().Printfln("  ✓ %s", pkg.GetIdentifier())
 	return nil
 }
 
 func (g *gitDownloader) buildOptions(url string) *git.CloneOptions {
 	return &git.CloneOptions{
 		URL:          url,
-		Progress:     os.Stdout,
+		Progress:     io.Discard,
 		SingleBranch: true,
 	}
 }
@@ -334,7 +333,6 @@ func (g *gitDownloader) tryDownload(ctx context.Context, targetDir string, optio
 			_, err := git.PlainCloneContext(ctx, targetDir, false, options)
 			if err != nil {
 				if errors.Is(err, transport.ErrAuthenticationRequired) {
-					g.k.Term().Println("auth required, trying keyring authentication")
 					continue
 				}
 
@@ -382,7 +380,6 @@ func (g *gitDownloader) tryDownload(ctx context.Context, targetDir string, optio
 			if err != nil {
 				if errors.Is(err, transport.ErrAuthorizationFailed) || errors.Is(err, transport.ErrAuthenticationRequired) {
 					if g.k.interactive {
-						g.k.Term().Println("invalid auth, trying manual authentication")
 						continue
 					}
 				}
