@@ -260,7 +260,7 @@ func getVersionedMap(gitDir string) (map[string]bool, error) {
 }
 
 func (b *Builder) build(ctx context.Context) error {
-	b.Term().Println("Merging packages...")
+	b.Term().Printfln("Merging packages...")
 	err := EnsureDirExists(b.targetDir)
 	if err != nil {
 		return err
@@ -444,7 +444,7 @@ func (b *Builder) build(ctx context.Context) error {
 		}
 	}
 
-	b.Term().Println("Composition completed.")
+	b.Term().Printfln("Composition completed.")
 	return nil
 }
 
