@@ -332,7 +332,6 @@ func (g *gitDownloader) tryDownload(ctx context.Context, targetDir string, optio
 	for _, authMode := range auths {
 		if authMode == authenticationModeNone {
 			_, err := git.PlainCloneContext(ctx, targetDir, false, options)
-			g.k.Term().Println("")
 			if err != nil {
 				if errors.Is(err, transport.ErrAuthenticationRequired) {
 					g.k.Term().Println("auth required, trying keyring authentication")
