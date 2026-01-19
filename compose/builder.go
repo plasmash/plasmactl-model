@@ -186,15 +186,15 @@ func adjustDestinationPath(path string, isModernLayout bool) string {
 }
 
 // stripRolesFromPath removes /roles/ segment from paths like {layer}/{type}/roles/{component}
-// Does NOT strip roles from special directories like actions/ and docs/
+// Does NOT strip roles from special directories like {layer}/actions/ and {layer}/docs/
 func stripRolesFromPath(path string) string {
-	// Skip stripping for special directories that are not component types
-	specialDirs := []string{
-		string(filepath.Separator) + "actions" + string(filepath.Separator),
-		string(filepath.Separator) + "docs" + string(filepath.Separator),
-	}
-	for _, special := range specialDirs {
-		if strings.Contains(path, special) {
+	// Skip stripping for special type directories that are not component types
+	// Only match when actions/docs is the TYPE (second segment), not a subdirectory
+	// e.g., platform/actions/... should skip, but cognition/services/data_relay/actions/... should NOT skip
+	parts := strings.Split(path, string(filepath.Separator))
+	if len(parts) >= 2 {
+		typeDir := parts[1] // Second segment is the type directory
+		if typeDir == "actions" || typeDir == "docs" {
 			return path
 		}
 	}
