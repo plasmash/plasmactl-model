@@ -55,6 +55,7 @@ func (m DownloadManager) Download(ctx context.Context, c *YamlCompose, targetDir
 	}
 
 	kw := m.getKeyring()
+	kw.Term().Println("Fetching packages...")
 	packages, err = m.recursiveDownload(ctx, c, packages, nil, targetDir)
 	if err != nil {
 		return packages, err

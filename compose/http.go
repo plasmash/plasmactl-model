@@ -58,7 +58,6 @@ func (h *httpDownloader) Download(_ context.Context, pkg *Package, targetDir str
 		return errNoURL
 	}
 
-	h.k.Term().Printfln("http download: %s", name)
 	fpath := filepath.Clean(filepath.Join(targetDir, name))
 
 	err := os.MkdirAll(targetDir, dirPermissions)
@@ -93,7 +92,6 @@ func (h *httpDownloader) Download(_ context.Context, pkg *Package, targetDir str
 			resp, err = doRequest(client, req)
 			if err != nil {
 				if errors.Is(err, errAuthenticationRequired) {
-					h.k.Term().Println("auth required, trying keyring authentication")
 					continue
 				}
 
@@ -113,7 +111,6 @@ func (h *httpDownloader) Download(_ context.Context, pkg *Package, targetDir str
 			if err != nil {
 				if errors.Is(err, errAuthorizationFailed) {
 					if h.k.interactive {
-						h.k.Term().Println("invalid auth, trying manual authentication")
 						continue
 					}
 				}
@@ -171,12 +168,16 @@ func (h *httpDownloader) Download(_ context.Context, pkg *Package, targetDir str
 		defer os.Remove(fpath)
 
 		// rename root folder to package name
-		return os.Rename(
+		err = os.Rename(
 			filepath.Join(targetDir, archiveRootDir),
 			filepath.Join(targetDir, pkg.GetTarget()),
 		)
+		if err != nil {
+			return err
+		}
 	}
 
+	h.k.Term().Printfln("  ✓ %s", pkg.GetIdentifier())
 	return nil
 }
 
