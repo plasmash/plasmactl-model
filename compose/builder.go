@@ -186,16 +186,38 @@ func adjustDestinationPath(path string, isModernLayout bool) string {
 }
 
 // stripRolesFromPath removes /roles/ segment from paths like {layer}/{type}/roles/{component}
+// Does NOT strip roles from special directories like actions/ and docs/
 func stripRolesFromPath(path string) string {
+	// Skip stripping for special directories that are not component types
+	specialDirs := []string{
+		string(filepath.Separator) + "actions" + string(filepath.Separator),
+		string(filepath.Separator) + "docs" + string(filepath.Separator),
+	}
+	for _, special := range specialDirs {
+		if strings.Contains(path, special) {
+			return path
+		}
+	}
+
 	const rolesSegment = string(filepath.Separator) + "roles" + string(filepath.Separator)
+	const rolesSuffix = string(filepath.Separator) + "roles"
+	// Handle /roles/ in middle of path
 	if idx := strings.Index(path, rolesSegment); idx != -1 {
 		// Remove the /roles/ segment
 		return path[:idx] + string(filepath.Separator) + path[idx+len(rolesSegment):]
 	}
-	// Also handle paths starting with roles/
+	// Handle paths ending with /roles (directory itself)
+	if strings.HasSuffix(path, rolesSuffix) {
+		return path[:len(path)-len(rolesSuffix)]
+	}
+	// Handle paths starting with roles/
 	const rolesPrefix = "roles" + string(filepath.Separator)
 	if strings.HasPrefix(path, rolesPrefix) {
 		return path[len(rolesPrefix):]
+	}
+	// Handle path that is exactly "roles"
+	if path == "roles" {
+		return ""
 	}
 	return path
 }
