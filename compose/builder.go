@@ -163,11 +163,13 @@ func hasModernLayout(pkgPath string) bool {
 // adjustDestinationPath adjusts destination based on package layout
 // For legacy packages: layers go to src/, others stay at root
 // For modern packages: everything copied as-is
-// Also strips /roles/ from path to normalize to clean layout
+// Also normalizes paths: strips /roles/, renames group_vars to variables
 func adjustDestinationPath(path string, isModernLayout bool) string {
 	// Strip /roles/ from path: {layer}/{type}/roles/{component} -> {layer}/{type}/{component}
 	// This normalizes old package layout to the new clean layout
 	path = stripRolesFromPath(path)
+	// Normalize group_vars to variables
+	path = normalizeGroupVarsToVariables(path)
 
 	if isModernLayout {
 		// Modern: keep path as-is
@@ -194,6 +196,22 @@ func stripRolesFromPath(path string) string {
 	const rolesPrefix = "roles" + string(filepath.Separator)
 	if strings.HasPrefix(path, rolesPrefix) {
 		return path[len(rolesPrefix):]
+	}
+	return path
+}
+
+// normalizeGroupVarsToVariables renames group_vars to variables in paths
+func normalizeGroupVarsToVariables(path string) string {
+	const groupVarsSegment = string(filepath.Separator) + "group_vars" + string(filepath.Separator)
+	const variablesSegment = string(filepath.Separator) + "variables" + string(filepath.Separator)
+	if idx := strings.Index(path, groupVarsSegment); idx != -1 {
+		return path[:idx] + variablesSegment + path[idx+len(groupVarsSegment):]
+	}
+	// Also handle paths starting with group_vars/
+	const groupVarsPrefix = "group_vars" + string(filepath.Separator)
+	const variablesPrefix = "variables" + string(filepath.Separator)
+	if strings.HasPrefix(path, groupVarsPrefix) {
+		return variablesPrefix + path[len(groupVarsPrefix):]
 	}
 	return path
 }
