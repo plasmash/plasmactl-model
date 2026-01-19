@@ -6,7 +6,7 @@ require (
 	dario.cat/mergo v1.0.2
 	github.com/charmbracelet/huh v0.7.0
 	github.com/go-git/go-git/v5 v5.16.3
-	github.com/launchrctl/keyring v0.7.0
+	github.com/launchrctl/keyring v0.8.0
 	github.com/launchrctl/launchr v0.22.0
 	github.com/stevenle/topsort v0.2.0
 	gopkg.in/yaml.v3 v3.0.1
