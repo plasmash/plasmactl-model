@@ -1,0 +1,20 @@
+runtime: plugin
+action:
+  title: Prepare Model
+  description: Transform composed model for Ansible deployment (creates roles structure, galaxy.yml, ansible.cfg)
+  options:
+    - name: clean
+      title: Clean
+      description: Clean prepare directory before starting
+      type: bool
+      default: true
+    - name: compose-dir
+      title: Compose Directory
+      description: Source directory with composed packages
+      type: string
+      default: ".plasma/package/compose/merged"
+    - name: prepare-dir
+      title: Prepare Directory
+      description: Output directory for prepared model
+      type: string
+      default: ".plasma/prepare"
