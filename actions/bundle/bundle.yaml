@@ -1,0 +1,4 @@
+runtime: plugin
+action:
+  title: Bundle
+  description: "Create a Platform Model bundle (.pm) for distribution and deployment"

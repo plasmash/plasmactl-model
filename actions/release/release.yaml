@@ -1,0 +1,36 @@
+action:
+  title: Release
+  description: "Create git tag with changelog and forge release"
+  arguments:
+    - name: version
+      title: Version
+      description: "Bump type (patch, minor, major) or explicit version (v1.2.3). Defaults to patch bump."
+      type: string
+      default: ""
+  options:
+    - name: dry-run
+      title: Dry run
+      description: Preview changelog and actions without making changes
+      type: boolean
+      default: false
+    - name: tag-only
+      title: Tag only
+      description: Create and push git tag only, skip forge release
+      type: boolean
+      default: false
+    - name: forge-url
+      title: Forge URL
+      description: "Forge URL for OAuth credentials (e.g., https://github.com). Auto-detected from git remote if omitted."
+      default: ""
+    - name: token
+      title: Forge API token
+      description: "API token for GitHub/GitLab/Gitea. Falls back to GITHUB_TOKEN/GITLAB_TOKEN/GITEA_TOKEN env vars."
+      default: ""
+      process:
+        - processor: keyring.GetCredential
+          options:
+            url: "{{ .forge_url }}"
+            optional: true
+
+runtime:
+  type: plugin

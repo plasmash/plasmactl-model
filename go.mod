@@ -1,4 +1,4 @@
-module github.com/plasmash/plasmactl-package
+module github.com/plasmash/plasmactl-model
 
 go 1.25.0
 
@@ -8,6 +8,7 @@ require (
 	github.com/go-git/go-git/v5 v5.16.3
 	github.com/launchrctl/keyring v0.8.0
 	github.com/launchrctl/launchr v0.22.0
+	github.com/leodido/go-conventionalcommits v0.12.0
 	github.com/stevenle/topsort v0.2.0
 	gopkg.in/yaml.v3 v3.0.1
 )
