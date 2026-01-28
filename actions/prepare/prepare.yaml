@@ -6,7 +6,7 @@ action:
     - name: clean
       title: Clean
       description: Clean prepare directory before starting
-      type: bool
+      type: boolean
       default: true
     - name: compose-dir
       title: Compose Directory
