@@ -1,7 +1,7 @@
 runtime: plugin
 action:
   title: Compose
-  description: "Compose packages from compose.yaml"
+  description: Fetch and merge packages from compose.yaml
   options:
     - name: working-dir
       shorthand: w

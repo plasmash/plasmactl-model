@@ -1,7 +1,7 @@
 runtime: plugin
 action:
-  title: Prepare Model
-  description: Transform composed model for Ansible deployment (creates roles structure, galaxy.yml, ansible.cfg)
+  title: Prepare
+  description: Prepare composed model for Ansible runtime
   options:
     - name: clean
       title: Clean
