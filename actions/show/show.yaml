@@ -1,0 +1,8 @@
+runtime: plugin
+action:
+  title: Show
+  description: Show package dependency details
+  arguments:
+    - name: package
+      title: Package
+      description: Package name (optional, shows all if omitted)

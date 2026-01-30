@@ -14,9 +14,12 @@ import (
 	"github.com/plasmash/plasmactl-model/actions/add"
 	"github.com/plasmash/plasmactl-model/actions/bundle"
 	"github.com/plasmash/plasmactl-model/actions/compose"
-	"github.com/plasmash/plasmactl-model/actions/remove"
+	"github.com/plasmash/plasmactl-model/actions/list"
 	"github.com/plasmash/plasmactl-model/actions/prepare"
+	"github.com/plasmash/plasmactl-model/actions/query"
 	"github.com/plasmash/plasmactl-model/actions/release"
+	"github.com/plasmash/plasmactl-model/actions/remove"
+	"github.com/plasmash/plasmactl-model/actions/show"
 	"github.com/plasmash/plasmactl-model/actions/update"
 	icompose "github.com/plasmash/plasmactl-model/internal/compose"
 )
@@ -184,6 +187,49 @@ func (p *Plugin) DiscoverActions(_ context.Context) ([]*action.Action, error) {
 		return r.Execute()
 	}))
 
+	// Action model:list - lists package dependencies.
+	listYaml, _ := actionYamlFS.ReadFile("actions/list/list.yaml")
+	listAction := action.NewFromYAML("model:list", listYaml)
+	listAction.SetRuntime(action.NewFnRuntime(func(_ context.Context, a *action.Action) error {
+		log, term := getLogger(a)
+		l := &list.List{
+			WorkingDir: p.wd,
+		}
+		l.SetLogger(log)
+		l.SetTerm(term)
+		return l.Execute()
+	}))
+
+	// Action model:show - shows package details.
+	showYaml, _ := actionYamlFS.ReadFile("actions/show/show.yaml")
+	showAction := action.NewFromYAML("model:show", showYaml)
+	showAction.SetRuntime(action.NewFnRuntime(func(_ context.Context, a *action.Action) error {
+		input := a.Input()
+		log, term := getLogger(a)
+		s := &show.Show{
+			WorkingDir: p.wd,
+			Package:    input.Arg("package").(string),
+		}
+		s.SetLogger(log)
+		s.SetTerm(term)
+		return s.Execute()
+	}))
+
+	// Action model:query - finds which package provides a component.
+	queryYaml, _ := actionYamlFS.ReadFile("actions/query/query.yaml")
+	queryAction := action.NewFromYAML("model:query", queryYaml)
+	queryAction.SetRuntime(action.NewFnRuntime(func(_ context.Context, a *action.Action) error {
+		input := a.Input()
+		log, term := getLogger(a)
+		q := &query.Query{
+			WorkingDir: p.wd,
+			Component:  input.Arg("component").(string),
+		}
+		q.SetLogger(log)
+		q.SetTerm(term)
+		return q.Execute()
+	}))
+
 	return []*action.Action{
 		composeAction,
 		addAction,
@@ -192,6 +238,9 @@ func (p *Plugin) DiscoverActions(_ context.Context) ([]*action.Action, error) {
 		prepareActionDef,
 		bundleAction,
 		releaseAction,
+		listAction,
+		showAction,
+		queryAction,
 	}, nil
 }
 
