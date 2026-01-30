@@ -1,0 +1,9 @@
+runtime: plugin
+action:
+  title: Query
+  description: Find which package provides a component
+  arguments:
+    - name: component
+      title: Component
+      description: Component name to search for
+      required: true

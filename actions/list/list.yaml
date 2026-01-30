@@ -1,0 +1,4 @@
+runtime: plugin
+action:
+  title: List
+  description: List package dependencies from compose.yaml
