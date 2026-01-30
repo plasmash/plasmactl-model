@@ -1,6 +1,6 @@
 action:
   title: Release
-  description: "Create git tag with changelog and forge release"
+  description: Create git tag with changelog and forge release
   arguments:
     - name: version
       title: Version

@@ -14,7 +14,7 @@ import (
 	"github.com/plasmash/plasmactl-model/actions/add"
 	"github.com/plasmash/plasmactl-model/actions/bundle"
 	"github.com/plasmash/plasmactl-model/actions/compose"
-	deleteaction "github.com/plasmash/plasmactl-model/actions/delete"
+	"github.com/plasmash/plasmactl-model/actions/remove"
 	"github.com/plasmash/plasmactl-model/actions/prepare"
 	"github.com/plasmash/plasmactl-model/actions/release"
 	"github.com/plasmash/plasmactl-model/actions/update"
@@ -121,19 +121,19 @@ func (p *Plugin) DiscoverActions(_ context.Context) ([]*action.Action, error) {
 		return u.Execute()
 	}))
 
-	// Action model:delete.
-	deleteYaml, _ := actionYamlFS.ReadFile("actions/delete/delete.yaml")
-	deleteAction := action.NewFromYAML("model:delete", deleteYaml)
-	deleteAction.SetRuntime(action.NewFnRuntime(func(_ context.Context, a *action.Action) error {
+	// Action model:remove.
+	removeYaml, _ := actionYamlFS.ReadFile("actions/remove/remove.yaml")
+	removeAction := action.NewFromYAML("model:remove", removeYaml)
+	removeAction.SetRuntime(action.NewFnRuntime(func(_ context.Context, a *action.Action) error {
 		input := a.Input()
 		log, term := getLogger(a)
-		d := &deleteaction.Delete{
+		r := &remove.Remove{
 			WorkingDir: p.wd,
 			Packages:   action.InputOptSlice[string](input, "packages"),
 		}
-		d.SetLogger(log)
-		d.SetTerm(term)
-		return d.Execute()
+		r.SetLogger(log)
+		r.SetTerm(term)
+		return r.Execute()
 	}))
 
 	// Action model:prepare - transforms composed model for Ansible deployment.
@@ -188,7 +188,7 @@ func (p *Plugin) DiscoverActions(_ context.Context) ([]*action.Action, error) {
 		composeAction,
 		addAction,
 		updateAction,
-		deleteAction,
+		removeAction,
 		prepareActionDef,
 		bundleAction,
 		releaseAction,
