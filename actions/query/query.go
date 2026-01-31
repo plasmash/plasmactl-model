@@ -36,12 +36,13 @@ func (q *Query) Execute() error {
 
 	var found []string
 	for _, dep := range cfg.Dependencies {
-		pkgPath := filepath.Join(packagesDir, dep.Name, componentPath)
+		ref := dep.Source.Ref
+		if ref == "" {
+			ref = "latest"
+		}
+		// Path: packages/<name>/<ref>/<component_path>
+		pkgPath := filepath.Join(packagesDir, dep.Name, ref, componentPath)
 		if _, err := os.Stat(pkgPath); err == nil {
-			ref := dep.Source.Ref
-			if ref == "" {
-				ref = "latest"
-			}
 			found = append(found, fmt.Sprintf("%s@%s", dep.Name, ref))
 		}
 	}
