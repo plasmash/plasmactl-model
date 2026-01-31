@@ -12,7 +12,7 @@ action:
       title: Compose Directory
       description: Source directory with composed packages
       type: string
-      default: ".plasma/package/compose/merged"
+      default: ".plasma/model/compose/merged"
     - name: prepare-dir
       title: Prepare Directory
       description: Output directory for prepared model

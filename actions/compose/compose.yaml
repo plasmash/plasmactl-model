@@ -8,7 +8,7 @@ action:
       title: Working directory
       description: Working directory for temp files
       type: string
-      default: .plasma/package/compose/packages
+      default: .plasma/model/compose/packages
     - name: skip-not-versioned
       shorthand: s
       title: Skip unversioned
@@ -22,7 +22,7 @@ action:
       default: false
     - name: clean
       title: Clean
-      description: Remove .plasma/package/compose dir on start
+      description: Remove .plasma/model/compose dir on start
       type: boolean
       default: false
     - name: interactive

@@ -37,7 +37,7 @@ func (b *Bundle) Execute() error {
 
 	// Determine source directory based on prepare action availability
 	prepareDir := ".plasma/prepare"
-	composeDir := ".plasma/package/compose/merged"
+	composeDir := ".plasma/model/compose/merged"
 	var srcDir string
 
 	if b.HasPrepareAction {
