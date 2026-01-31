@@ -103,41 +103,48 @@ func discoverComponents(packagesDir, pkgName, ref string) []string {
 
 	pkgPath := filepath.Join(packagesDir, pkgName, ref)
 
-	// Scan for components: <namespace>/<type>/roles/<name>/
-	namespaces, err := os.ReadDir(pkgPath)
+	// Check if src/ subdirectory exists (pla-plasma structure)
+	srcPath := filepath.Join(pkgPath, "src")
+	if stat, err := os.Stat(srcPath); err == nil && stat.IsDir() {
+		pkgPath = srcPath
+	}
+
+	// Scan for components: <layer>/<kind>/<name>/
+	layers, err := os.ReadDir(pkgPath)
 	if err != nil {
 		return nil
 	}
 
-	for _, ns := range namespaces {
-		if !ns.IsDir() {
+	for _, l := range layers {
+		if !l.IsDir() {
 			continue
 		}
-		nsPath := filepath.Join(pkgPath, ns.Name())
+		layerPath := filepath.Join(pkgPath, l.Name())
 
-		// Scan component types (applications, entities, services, etc.)
-		types, err := os.ReadDir(nsPath)
+		// Scan component kinds (applications, entities, services, etc.)
+		kinds, err := os.ReadDir(layerPath)
 		if err != nil {
 			continue
 		}
 
-		for _, t := range types {
-			if !t.IsDir() {
+		for _, k := range kinds {
+			if !k.IsDir() {
 				continue
 			}
-			rolesPath := filepath.Join(nsPath, t.Name(), "roles")
+			kindPath := filepath.Join(layerPath, k.Name())
 
-			roles, err := os.ReadDir(rolesPath)
+			// Scan component names directly under kind
+			names, err := os.ReadDir(kindPath)
 			if err != nil {
 				continue
 			}
 
-			for _, role := range roles {
-				if !role.IsDir() {
+			for _, name := range names {
+				if !name.IsDir() {
 					continue
 				}
-				// Component name: namespace.type.name
-				compName := fmt.Sprintf("%s.%s.%s", ns.Name(), t.Name(), role.Name())
+				// Component name: layer.kind.name
+				compName := fmt.Sprintf("%s.%s.%s", l.Name(), k.Name(), name.Name())
 				components = append(components, compName)
 			}
 		}
