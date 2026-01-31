@@ -206,9 +206,13 @@ func (p *Plugin) DiscoverActions(_ context.Context) ([]*action.Action, error) {
 	showAction.SetRuntime(action.NewFnRuntime(func(_ context.Context, a *action.Action) error {
 		input := a.Input()
 		log, term := getLogger(a)
+		pkg := ""
+		if v := input.Arg("package"); v != nil {
+			pkg = v.(string)
+		}
 		s := &show.Show{
 			WorkingDir: p.wd,
-			Package:    input.Arg("package").(string),
+			Package:    pkg,
 		}
 		s.SetLogger(log)
 		s.SetTerm(term)

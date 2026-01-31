@@ -3,6 +3,7 @@ package show
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/launchrctl/launchr/pkg/action"
 
@@ -33,13 +34,18 @@ func (s *Show) Execute() error {
 
 	// If specific package requested, find and show it
 	if s.Package != "" {
+		// Strip @ref if present (e.g., "plasma-core@prepare" -> "plasma-core")
+		pkgName := s.Package
+		if idx := strings.Index(pkgName, "@"); idx != -1 {
+			pkgName = pkgName[:idx]
+		}
 		for _, dep := range cfg.Dependencies {
-			if dep.Name == s.Package {
+			if dep.Name == pkgName {
 				printPackage(dep)
 				return nil
 			}
 		}
-		s.Term().Error().Printfln("Package %q not found", s.Package)
+		s.Term().Error().Printfln("Package %q not found", pkgName)
 		return nil
 	}
 
