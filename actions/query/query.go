@@ -29,7 +29,7 @@ func (q *Query) Execute() error {
 	}
 
 	// Convert component name to path pattern
-	// e.g., "interaction.applications.connect" -> "interaction/applications/roles/connect"
+	// e.g., "interaction.applications.connect" -> "interaction/applications/connect"
 	componentPath := componentToPath(q.Component)
 
 	packagesDir := filepath.Join(q.WorkingDir, ".plasma/package/compose/packages")
@@ -40,9 +40,14 @@ func (q *Query) Execute() error {
 		if ref == "" {
 			ref = "latest"
 		}
-		// Path: packages/<name>/<ref>/<component_path>
-		pkgPath := filepath.Join(packagesDir, dep.Name, ref, componentPath)
+		// Check both direct path and src/ subdirectory
+		pkgBasePath := filepath.Join(packagesDir, dep.Name, ref)
+		pkgPath := filepath.Join(pkgBasePath, componentPath)
+		srcPath := filepath.Join(pkgBasePath, "src", componentPath)
+
 		if _, err := os.Stat(pkgPath); err == nil {
+			found = append(found, fmt.Sprintf("%s@%s", dep.Name, ref))
+		} else if _, err := os.Stat(srcPath); err == nil {
 			found = append(found, fmt.Sprintf("%s@%s", dep.Name, ref))
 		}
 	}
@@ -60,26 +65,10 @@ func (q *Query) Execute() error {
 }
 
 // componentToPath converts a component name to its directory path
-// e.g., "interaction.applications.connect" -> "interaction/applications/roles/connect"
-// e.g., "platform.entities.person" -> "platform/entities/roles/person"
+// e.g., "interaction.applications.connect" -> "interaction/applications/connect"
+// e.g., "platform.entities.person" -> "platform/entities/person"
 func componentToPath(component string) string {
-	parts := strings.Split(component, ".")
-	if len(parts) < 3 {
-		// Fallback: just replace dots with slashes
-		return strings.ReplaceAll(component, ".", "/")
-	}
-
-	// Format: namespace.type.name or namespace.type.subtype.name
-	// Components are in roles/ subdirectory
-	namespace := parts[0]
-	componentType := parts[1]
-	name := parts[len(parts)-1]
-
-	// Handle subtype (e.g., "platform.entities.roles.person" vs "platform.entities.person")
-	if len(parts) == 4 && parts[2] == "roles" {
-		// Already has roles in path
-		return filepath.Join(namespace, componentType, "roles", name)
-	}
-
-	return filepath.Join(namespace, componentType, "roles", name)
+	// Component format: <layer>.<kind>.<name>
+	// Simply replace dots with path separators
+	return strings.ReplaceAll(component, ".", string(filepath.Separator))
 }
