@@ -32,7 +32,7 @@ func (q *Query) Execute() error {
 	// e.g., "interaction.applications.connect" -> "interaction/applications/connect"
 	componentPath := componentToPath(q.Component)
 
-	packagesDir := filepath.Join(q.WorkingDir, ".plasma/package/compose/packages")
+	packagesDir := filepath.Join(q.WorkingDir, ".plasma/model/compose/packages")
 
 	var found []string
 	for _, dep := range cfg.Dependencies {
@@ -40,14 +40,17 @@ func (q *Query) Execute() error {
 		if ref == "" {
 			ref = "latest"
 		}
-		// Check both direct path and src/ subdirectory
 		pkgBasePath := filepath.Join(packagesDir, dep.Name, ref)
-		pkgPath := filepath.Join(pkgBasePath, componentPath)
-		srcPath := filepath.Join(pkgBasePath, "src", componentPath)
 
-		if _, err := os.Stat(pkgPath); err == nil {
+		// Check both package structures:
+		// - src/<layer>/<kind>/<name>/ (plasma-core style)
+		// - <layer>/<kind>/roles/<name>/ (plasma-work style)
+		srcPath := filepath.Join(pkgBasePath, "src", componentPath)
+		rolesPath := filepath.Join(pkgBasePath, componentPathWithRoles(q.Component))
+
+		if _, err := os.Stat(srcPath); err == nil {
 			found = append(found, fmt.Sprintf("%s@%s", dep.Name, ref))
-		} else if _, err := os.Stat(srcPath); err == nil {
+		} else if _, err := os.Stat(rolesPath); err == nil {
 			found = append(found, fmt.Sprintf("%s@%s", dep.Name, ref))
 		}
 	}
@@ -66,9 +69,18 @@ func (q *Query) Execute() error {
 
 // componentToPath converts a component name to its directory path
 // e.g., "interaction.applications.connect" -> "interaction/applications/connect"
-// e.g., "platform.entities.person" -> "platform/entities/person"
 func componentToPath(component string) string {
 	// Component format: <layer>.<kind>.<name>
-	// Simply replace dots with path separators
 	return strings.ReplaceAll(component, ".", string(filepath.Separator))
+}
+
+// componentPathWithRoles converts a component name to path with roles/ subdirectory
+// e.g., "interaction.applications.im" -> "interaction/applications/roles/im"
+func componentPathWithRoles(component string) string {
+	parts := strings.Split(component, ".")
+	if len(parts) < 3 {
+		return strings.ReplaceAll(component, ".", string(filepath.Separator))
+	}
+	// Format: <layer>/<kind>/roles/<name>
+	return filepath.Join(parts[0], parts[1], "roles", parts[len(parts)-1])
 }

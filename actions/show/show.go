@@ -35,7 +35,7 @@ func (s *Show) Execute() error {
 		return nil
 	}
 
-	packagesDir := filepath.Join(s.WorkingDir, ".plasma/package/compose/packages")
+	packagesDir := filepath.Join(s.WorkingDir, ".plasma/model/compose/packages")
 
 	// If specific package requested, find and show it
 	if s.Package != "" {
@@ -103,13 +103,15 @@ func discoverComponents(packagesDir, pkgName, ref string) []string {
 
 	pkgPath := filepath.Join(packagesDir, pkgName, ref)
 
-	// Check if src/ subdirectory exists (pla-plasma structure)
+	// Check if src/ subdirectory exists (plasma-core style)
 	srcPath := filepath.Join(pkgPath, "src")
+	hasSrc := false
 	if stat, err := os.Stat(srcPath); err == nil && stat.IsDir() {
 		pkgPath = srcPath
+		hasSrc = true
 	}
 
-	// Scan for components: <layer>/<kind>/<name>/
+	// Scan for components
 	layers, err := os.ReadDir(pkgPath)
 	if err != nil {
 		return nil
@@ -133,7 +135,15 @@ func discoverComponents(packagesDir, pkgName, ref string) []string {
 			}
 			kindPath := filepath.Join(layerPath, k.Name())
 
-			// Scan component names directly under kind
+			// Check for roles/ subdirectory (plasma-work style)
+			rolesPath := filepath.Join(kindPath, "roles")
+			if !hasSrc {
+				if stat, err := os.Stat(rolesPath); err == nil && stat.IsDir() {
+					kindPath = rolesPath
+				}
+			}
+
+			// Scan component names
 			names, err := os.ReadDir(kindPath)
 			if err != nil {
 				continue
@@ -141,6 +151,10 @@ func discoverComponents(packagesDir, pkgName, ref string) []string {
 
 			for _, name := range names {
 				if !name.IsDir() {
+					continue
+				}
+				// Skip "roles" if we're not in roles/ path already
+				if name.Name() == "roles" {
 					continue
 				}
 				// Component name: layer.kind.name

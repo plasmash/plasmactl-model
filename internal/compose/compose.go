@@ -16,7 +16,7 @@ import (
 
 const (
 	// MainDir is a compose directory.
-	MainDir = ".plasma/package/compose"
+	MainDir = ".plasma/model/compose"
 	// BuildDir is a result directory of compose action.
 	BuildDir       = MainDir + "/merged"
 	composeFile    = "compose.yaml"
