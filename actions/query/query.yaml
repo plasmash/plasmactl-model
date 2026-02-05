@@ -1,9 +1,28 @@
 runtime: plugin
 action:
   title: Query
-  description: Find which package provides a component
+  description: Query packages by component, chassis, or node
   arguments:
-    - name: component
-      title: Component
-      description: Component name to search for
+    - name: identifier
+      title: Identifier
+      description: Component name, chassis section, or node hostname to search for
       required: true
+  options:
+    - name: kind
+      shorthand: k
+      title: Kind
+      description: Identifier kind to skip auto-detection (component, chassis, node)
+      type: string
+      enum: [component, chassis, node]
+      default: ""
+  result:
+    type: object
+    description: Query result containing matching packages
+    properties:
+      packages:
+        type: array
+        description: List of package names matching the query
+        items:
+          type: string
+    required:
+      - packages

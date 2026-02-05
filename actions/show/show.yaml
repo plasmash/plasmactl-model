@@ -1,8 +1,55 @@
 runtime: plugin
 action:
   title: Show
-  description: Show package dependency details
+  description: Show model overview or specific package details
   arguments:
     - name: package
       title: Package
-      description: Package name (optional, shows all if omitted)
+      description: Package name (optional, shows overview if omitted)
+  options:
+    - name: packages
+      title: Packages
+      description: Show only external packages from compose.yaml
+      type: boolean
+      default: false
+    - name: src
+      title: Source
+      description: Show only local src/ components
+      type: boolean
+      default: false
+    - name: merged
+      title: Merged
+      description: Show merged composition result
+      type: boolean
+      default: false
+  result:
+    type: object
+    properties:
+      packages:
+        type: array
+        description: List of package dependencies
+        items:
+          type: object
+          properties:
+            name:
+              type: string
+              description: Package name
+            ref:
+              type: string
+              description: Git reference (branch, tag, commit)
+            url:
+              type: string
+              description: Source URL
+            type:
+              type: string
+              description: Source type (git, http)
+            strategies:
+              type: array
+              description: Merge strategies
+              items:
+                type: string
+            components:
+              type: array
+              description: Components provided by this package
+              items:
+                type: string

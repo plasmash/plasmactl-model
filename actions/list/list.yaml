@@ -2,3 +2,25 @@ runtime: plugin
 action:
   title: List
   description: List package dependencies from compose.yaml
+  options:
+    - name: tree
+      shorthand: t
+      title: Tree
+      description: Show as tree with components, sections, and nodes
+      type: boolean
+      default: false
+  result:
+    type: object
+    properties:
+      packages:
+        type: array
+        description: List of package dependencies
+        items:
+          type: object
+          properties:
+            name:
+              type: string
+              description: Package name
+            ref:
+              type: string
+              description: Git reference

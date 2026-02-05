@@ -190,20 +190,23 @@ func (p *Plugin) DiscoverActions(_ context.Context) ([]*action.Action, error) {
 	// Action model:list - lists package dependencies.
 	listYaml, _ := actionYamlFS.ReadFile("actions/list/list.yaml")
 	listAction := action.NewFromYAML("model:list", listYaml)
-	listAction.SetRuntime(action.NewFnRuntime(func(_ context.Context, a *action.Action) error {
+	listAction.SetRuntime(action.NewFnRuntimeWithResult(func(_ context.Context, a *action.Action) (any, error) {
+		input := a.Input()
 		log, term := getLogger(a)
 		l := &list.List{
 			WorkingDir: p.wd,
+			Tree:       input.Opt("tree").(bool),
 		}
 		l.SetLogger(log)
 		l.SetTerm(term)
-		return l.Execute()
+		err := l.Execute()
+		return l.Result(), err
 	}))
 
 	// Action model:show - shows package details.
 	showYaml, _ := actionYamlFS.ReadFile("actions/show/show.yaml")
 	showAction := action.NewFromYAML("model:show", showYaml)
-	showAction.SetRuntime(action.NewFnRuntime(func(_ context.Context, a *action.Action) error {
+	showAction.SetRuntime(action.NewFnRuntimeWithResult(func(_ context.Context, a *action.Action) (any, error) {
 		input := a.Input()
 		log, term := getLogger(a)
 		pkg := ""
@@ -213,25 +216,31 @@ func (p *Plugin) DiscoverActions(_ context.Context) ([]*action.Action, error) {
 		s := &show.Show{
 			WorkingDir: p.wd,
 			Package:    pkg,
+			Packages:   input.Opt("packages").(bool),
+			Src:        input.Opt("src").(bool),
+			Merged:     input.Opt("merged").(bool),
 		}
 		s.SetLogger(log)
 		s.SetTerm(term)
-		return s.Execute()
+		err := s.Execute()
+		return s.Result(), err
 	}))
 
-	// Action model:query - finds which package provides a component.
+	// Action model:query - queries packages by component, chassis path, or node.
 	queryYaml, _ := actionYamlFS.ReadFile("actions/query/query.yaml")
 	queryAction := action.NewFromYAML("model:query", queryYaml)
-	queryAction.SetRuntime(action.NewFnRuntime(func(_ context.Context, a *action.Action) error {
+	queryAction.SetRuntime(action.NewFnRuntimeWithResult(func(_ context.Context, a *action.Action) (any, error) {
 		input := a.Input()
 		log, term := getLogger(a)
 		q := &query.Query{
 			WorkingDir: p.wd,
-			Component:  input.Arg("component").(string),
+			Identifier: input.Arg("identifier").(string),
+			Kind:       input.Opt("kind").(string),
 		}
 		q.SetLogger(log)
 		q.SetTerm(term)
-		return q.Execute()
+		err := q.Execute()
+		return q.Result(), err
 	}))
 
 	return []*action.Action{
