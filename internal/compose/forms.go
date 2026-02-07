@@ -43,7 +43,7 @@ func (f *FormsAction) AddPackage(doCreate bool, newDependency *Dependency, rawSt
 			}
 		}
 
-		config = &YamlCompose{
+		config = &Composition{
 			Name:         "plasma",
 			Dependencies: []Dependency{},
 		}
@@ -320,7 +320,7 @@ func (f *FormsAction) processStrategiesForm(dependency *Dependency) error {
 	return nil
 }
 
-func preparePackageForm(dependency *Dependency, config *YamlCompose, isAdd bool) *huh.Form {
+func preparePackageForm(dependency *Dependency, config *Composition, isAdd bool) *huh.Form {
 	uniqueLimit := 1
 	if isAdd {
 		uniqueLimit = 0
@@ -410,7 +410,7 @@ func convertRawStrategies(input *RawStrategies) []Strategy {
 	return strategies
 }
 
-func sortPackages(config *YamlCompose) {
+func sortPackages(config *Composition) {
 	sort.Slice(config.Dependencies, func(i, j int) bool {
 		return config.Dependencies[i].Name < config.Dependencies[j].Name
 	})

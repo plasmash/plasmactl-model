@@ -13,7 +13,6 @@ action:
       title: Kind
       description: Identifier kind to skip auto-detection (component, chassis, node)
       type: string
-      enum: [component, chassis, node]
       default: ""
   result:
     type: object
