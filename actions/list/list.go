@@ -3,16 +3,12 @@ package list
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"sort"
 
 	"github.com/launchrctl/launchr/pkg/action"
-	"github.com/plasmash/plasmactl-chassis/pkg/chassis"
 	"github.com/plasmash/plasmactl-component/pkg/component"
-	"github.com/plasmash/plasmactl-node/pkg/node"
-
 	"github.com/plasmash/plasmactl-model/internal/compose"
-	"github.com/plasmash/plasmactl-model/pkg/model"
+	"github.com/plasmash/plasmactl-platform/pkg/graph"
 )
 
 // PackageListItem represents a package in the list output
@@ -77,43 +73,30 @@ func (l *List) Execute() error {
 	return nil
 }
 
-// printTreeWithRelations prints packages as a tree with components (🧩), chassis paths (📍), and nodes (🖥)
+// printTreeWithRelations prints packages as a tree with components, chassis paths, and nodes
 func (l *List) printTreeWithRelations(cfg *compose.Composition) error {
-	packagesDir := filepath.Join(l.WorkingDir, model.PackagesDir)
-
-	// Check if packages directory exists
-	if _, err := os.Stat(packagesDir); os.IsNotExist(err) {
-		l.Term().Error().Printfln("packages directory not found: %s (run model:compose first)", packagesDir)
-		return nil
+	g, err := graph.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load graph: %w", err)
 	}
 
-	// Load chassis for path validation
-	c, _ := chassis.Load(l.WorkingDir)
-
-	// Load components from playbooks
-	components, _ := component.LoadFromPlaybooks(l.WorkingDir)
+	// Build component→chassis map from graph
 	componentToChassis := make(map[string]string)
-	for _, comp := range components {
-		componentToChassis[comp.Name] = comp.Chassis
-	}
-
-	// Load nodes and compute allocations
-	nodesByPlatform, _ := node.LoadByPlatform(l.WorkingDir)
-	chassisToNodes := make(map[string][]string)
-	if c != nil {
-		for _, nodes := range nodesByPlatform {
-			allocations := nodes.Allocations(c)
-			for _, n := range nodes {
-				for _, chassisPath := range allocations[n.Hostname] {
-					chassisToNodes[chassisPath] = append(chassisToNodes[chassisPath], n.DisplayName())
-				}
-			}
+	for _, n := range g.NodesByType("component") {
+		for _, e := range g.EdgesTo(n.Name, "attaches") {
+			componentToChassis[n.Name] = e.From().Name
 		}
 	}
 
-	// Sort nodes per chassis path
-	for chassisPath := range chassisToNodes {
-		sort.Strings(chassisToNodes[chassisPath])
+	// Build chassis→nodes map from graph
+	chassisToNodes := make(map[string][]string)
+	for _, n := range g.NodesByType("node") {
+		for _, e := range g.EdgesFrom(n.Name, "memberof") {
+			chassisToNodes[e.To().Name] = append(chassisToNodes[e.To().Name], n.Name)
+		}
+	}
+	for k := range chassisToNodes {
+		sort.Strings(chassisToNodes[k])
 	}
 
 	for pi, dep := range cfg.Dependencies {
@@ -125,15 +108,16 @@ func (l *List) printTreeWithRelations(cfg *compose.Composition) error {
 		// Print package header
 		fmt.Printf("📦 %s@%s\n", dep.Name, ref)
 
-		// Discover components in this package using shared component discovery
-		pkgPath := filepath.Join(packagesDir, dep.Name, ref)
-		srcPath := filepath.Join(pkgPath, "src")
-		if stat, err := os.Stat(srcPath); err == nil && stat.IsDir() {
-			pkgPath = srcPath
+		// Get components in this package from graph
+		var pkgComponents []string
+		for _, e := range g.EdgesFrom(dep.Name, "contains") {
+			if e.To().Type == "component" {
+				pkgComponents = append(pkgComponents, e.To().Name)
+			}
 		}
-		pkgComponents, _ := component.LoadFromPath(pkgPath)
+		sort.Strings(pkgComponents)
 
-		for ci, comp := range pkgComponents {
+		for ci, compName := range pkgComponents {
 			isLastComp := ci == len(pkgComponents)-1
 
 			var compPrefix, compIndent string
@@ -145,10 +129,15 @@ func (l *List) printTreeWithRelations(cfg *compose.Composition) error {
 				compIndent = "│   "
 			}
 
-			fmt.Printf("%s🧩 %s\n", compPrefix, comp.DisplayName())
+			n := g.Node(compName)
+			version := ""
+			if n != nil {
+				version = n.Version
+			}
+			fmt.Printf("%s🧩 %s\n", compPrefix, component.FormatDisplayName(compName, version))
 
 			// Get chassis path for this component
-			chassisPath := componentToChassis[comp.Name]
+			chassisPath := componentToChassis[compName]
 			nodes := chassisToNodes[chassisPath]
 			totalChildren := 0
 			if chassisPath != "" {
@@ -172,7 +161,7 @@ func (l *List) printTreeWithRelations(cfg *compose.Composition) error {
 			}
 
 			// Print nodes that serve this chassis path
-			for _, n := range nodes {
+			for _, nd := range nodes {
 				childIdx++
 				isLast := childIdx == totalChildren
 				var childPrefix string
@@ -181,7 +170,7 @@ func (l *List) printTreeWithRelations(cfg *compose.Composition) error {
 				} else {
 					childPrefix = compIndent + "├── "
 				}
-				fmt.Printf("%s🖥  %s\n", childPrefix, n)
+				fmt.Printf("%s🖥  %s\n", childPrefix, nd)
 			}
 		}
 
@@ -192,4 +181,3 @@ func (l *List) printTreeWithRelations(cfg *compose.Composition) error {
 
 	return nil
 }
-

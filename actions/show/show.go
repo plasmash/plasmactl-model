@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/launchrctl/launchr/pkg/action"
 
 	"github.com/plasmash/plasmactl-component/pkg/component"
 	"github.com/plasmash/plasmactl-model/internal/compose"
-	"github.com/plasmash/plasmactl-model/pkg/model"
+	"github.com/plasmash/plasmactl-platform/pkg/graph"
 )
 
 // PackageInfo represents a package dependency with its details
@@ -57,21 +58,17 @@ func (s *Show) Execute() error {
 		return nil
 	}
 
-	packagesDir := filepath.Join(s.WorkingDir, model.PackagesDir)
-	mergedDir := filepath.Join(s.WorkingDir, model.MergedSrcDir)
-	srcDir := filepath.Join(s.WorkingDir, "src")
-
 	// Initialize result
 	s.result = &ShowResult{}
 
-	// Handle --merged flag: show merged composition
+	// Handle --merged flag: show merged composition from graph
 	if s.Merged {
-		return s.showMerged(mergedDir)
+		return s.showMerged()
 	}
 
-	// Handle --src flag: show only local src/ components
+	// Handle --src flag: show only local src/ components (filesystem-based)
 	if s.Src {
-		return s.showSrc(srcDir)
+		return s.showSrc(filepath.Join(s.WorkingDir, "src"))
 	}
 
 	// Handle --packages flag: show only external packages (no components)
@@ -86,9 +83,15 @@ func (s *Show) Execute() error {
 		if idx := strings.Index(pkgName, "@"); idx != -1 {
 			pkgName = pkgName[:idx]
 		}
+
+		g, err := graph.Load()
+		if err != nil {
+			return fmt.Errorf("failed to load graph: %w", err)
+		}
+
 		for _, dep := range cfg.Dependencies {
 			if dep.Name == pkgName {
-				pkg := s.buildPackageInfo(dep, packagesDir)
+				pkg := s.buildPackageInfo(dep, g)
 				s.result.Packages = append(s.result.Packages, pkg)
 				// Output is handled by launchr based on result schema
 				return nil
@@ -99,11 +102,11 @@ func (s *Show) Execute() error {
 	}
 
 	// Default: show model overview (packages + src + stats)
-	return s.showOverview(cfg, packagesDir, srcDir, mergedDir)
+	return s.showOverview(cfg)
 }
 
 // buildPackageInfo creates a PackageInfo from a compose.Dependency
-func (s *Show) buildPackageInfo(dep compose.Dependency, packagesDir string) PackageInfo {
+func (s *Show) buildPackageInfo(dep compose.Dependency, g *graph.PlatformGraph) PackageInfo {
 	ref := dep.Source.Ref
 	if ref == "" {
 		ref = "latest"
@@ -126,19 +129,13 @@ func (s *Show) buildPackageInfo(dep compose.Dependency, packagesDir string) Pack
 		pkg.Strategies = append(pkg.Strategies, strat.Name)
 	}
 
-	// Discover components using shared logic from plasmactl-component
-	pkgPath := filepath.Join(packagesDir, dep.Name, ref)
-
-	// Check if src/ subdirectory exists (plasma-core style)
-	srcPath := filepath.Join(pkgPath, "src")
-	if stat, err := os.Stat(srcPath); err == nil && stat.IsDir() {
-		pkgPath = srcPath
+	// Discover components from graph
+	for _, e := range g.EdgesFrom(dep.Name, "contains") {
+		if e.To().Type == "component" {
+			pkg.Components = append(pkg.Components, e.To().Name)
+		}
 	}
-
-	components, _ := component.LoadFromPath(pkgPath)
-	for _, comp := range components {
-		pkg.Components = append(pkg.Components, comp.Name)
-	}
+	sort.Strings(pkg.Components)
 
 	return pkg
 }
@@ -163,30 +160,34 @@ func (s *Show) printPackage(pkg PackageInfo) {
 	}
 }
 
-// showMerged displays the merged composition result
-func (s *Show) showMerged(mergedDir string) error {
-	if _, err := os.Stat(mergedDir); os.IsNotExist(err) {
-		s.Term().Warning().Println("Merged directory not found. Run model:compose first.")
-		return nil
+// showMerged displays the merged composition result from the graph
+func (s *Show) showMerged() error {
+	g, err := graph.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load graph: %w", err)
 	}
 
-	components, _ := component.LoadFromPath(mergedDir)
+	components := g.NodesByType("component")
 	if len(components) == 0 {
-		s.Term().Info().Println("No components in merged composition")
+		s.Term().Info().Println("No components in composition")
 		return nil
 	}
 
-	s.Term().Info().Printfln("Merged Components (%d)", len(components))
-	fmt.Printf("Location: %s\n", mergedDir)
+	names := make([]string, len(components))
+	for i, n := range components {
+		names[i] = n.Name
+	}
+	sort.Strings(names)
 
-	for _, comp := range components {
-		fmt.Println(comp.Name)
+	s.Term().Info().Printfln("Components (%d)", len(components))
+	for _, name := range names {
+		fmt.Println(name)
 	}
 
 	return nil
 }
 
-// showSrc displays only local src/ components
+// showSrc displays only local src/ components (filesystem-based, not in graph)
 func (s *Show) showSrc(srcDir string) error {
 	if _, err := os.Stat(srcDir); os.IsNotExist(err) {
 		s.Term().Info().Println("No src/ directory found")
@@ -229,12 +230,13 @@ func (s *Show) showPackagesOnly(cfg *compose.Composition) error {
 }
 
 // showOverview displays the model overview with packages, src, and stats
-func (s *Show) showOverview(cfg *compose.Composition, packagesDir, srcDir, mergedDir string) error {
-	// Count totals
-	var totalPkgComponents int
-	var srcComponents []component.Component
+func (s *Show) showOverview(cfg *compose.Composition) error {
+	g, err := graph.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load graph: %w", err)
+	}
 
-	// Show packages summary
+	// Show packages summary with component counts from graph
 	if len(cfg.Dependencies) > 0 {
 		s.Term().Info().Printfln("Packages (%d)", len(cfg.Dependencies))
 		for _, dep := range cfg.Dependencies {
@@ -243,42 +245,31 @@ func (s *Show) showOverview(cfg *compose.Composition, packagesDir, srcDir, merge
 				ref = "latest"
 			}
 
-			// Count components in this package
-			pkgPath := filepath.Join(packagesDir, dep.Name, ref)
-			srcPath := filepath.Join(pkgPath, "src")
-			if stat, err := os.Stat(srcPath); err == nil && stat.IsDir() {
-				pkgPath = srcPath
+			var count int
+			for _, e := range g.EdgesFrom(dep.Name, "contains") {
+				if e.To().Type == "component" {
+					count++
+				}
 			}
-			components, _ := component.LoadFromPath(pkgPath)
-			componentCount := len(components)
-			totalPkgComponents += componentCount
 
-			fmt.Printf("  %s@%s\t(%d components)\n", dep.Name, ref, componentCount)
+			fmt.Printf("  %s@%s\t(%d components)\n", dep.Name, ref, count)
 		}
 	}
 
-	// Show src/ summary
+	// Show src/ summary (filesystem-based, local uncomposed code)
+	srcDir := filepath.Join(s.WorkingDir, "src")
 	if _, err := os.Stat(srcDir); err == nil {
-		srcComponents, _ = component.LoadFromPath(srcDir)
+		srcComponents, _ := component.LoadFromPath(srcDir)
 		if len(srcComponents) > 0 {
 			s.Term().Info().Printfln("Source (%d)", len(srcComponents))
 			fmt.Printf("  Location: %s\n", srcDir)
 		}
 	}
 
-	// Show merged stats
-	if _, err := os.Stat(mergedDir); err == nil {
-		mergedComponents, _ := component.LoadFromPath(mergedDir)
-		if len(mergedComponents) > 0 {
-			s.Term().Info().Printfln("Merged: %d components total", len(mergedComponents))
-			fmt.Printf("  Location: %s\n", mergedDir)
-		}
-	} else {
-		// Estimate total
-		total := totalPkgComponents + len(srcComponents)
-		if total > 0 {
-			s.Term().Info().Printfln("Total: ~%d components (run model:compose to merge)", total)
-		}
+	// Merged stats from graph
+	allComponents := g.NodesByType("component")
+	if len(allComponents) > 0 {
+		s.Term().Info().Printfln("Merged: %d components total", len(allComponents))
 	}
 
 	return nil

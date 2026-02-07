@@ -13,6 +13,7 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/launchrctl/launchr/pkg/action"
+	"github.com/plasmash/plasmactl-model/pkg/model"
 )
 
 // Bundle implements the model:bundle command
@@ -36,8 +37,8 @@ func (b *Bundle) Execute() error {
 	bundleFile := fmt.Sprintf("%s-%s.pm", repoName, version)
 
 	// Determine source directory based on prepare action availability
-	prepareDir := ".plasma/prepare"
-	composeDir := ".plasma/model/compose/merged"
+	prepareDir := model.PrepareDir
+	composeDir := model.MergedDir
 	var srcDir string
 
 	if b.HasPrepareAction {

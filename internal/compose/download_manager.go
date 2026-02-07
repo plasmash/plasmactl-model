@@ -46,7 +46,7 @@ func (m DownloadManager) getDownloaderForPackage(downloadType string) Downloader
 }
 
 // Download packages using compose file
-func (m DownloadManager) Download(ctx context.Context, c *YamlCompose, targetDir string) ([]*Package, error) {
+func (m DownloadManager) Download(ctx context.Context, c *Composition, targetDir string) ([]*Package, error) {
 	var packages []*Package
 	//credentials := []keyring.CredentialsItem{}
 	err := EnsureDirExists(targetDir)
@@ -71,7 +71,7 @@ func (m DownloadManager) Download(ctx context.Context, c *YamlCompose, targetDir
 	return packages, err
 }
 
-func (m DownloadManager) recursiveDownload(ctx context.Context, yc *YamlCompose, packages []*Package, parent *Package, targetDir string) ([]*Package, error) {
+func (m DownloadManager) recursiveDownload(ctx context.Context, yc *Composition, packages []*Package, parent *Package, targetDir string) ([]*Package, error) {
 	for _, d := range yc.Dependencies {
 		select {
 		case <-ctx.Done():

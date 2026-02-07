@@ -12,19 +12,21 @@ import (
 
 	"github.com/launchrctl/keyring"
 	"github.com/launchrctl/launchr/pkg/action"
+
+	"github.com/plasmash/plasmactl-model/pkg/model"
 )
 
 const (
-	// MainDir is a compose directory.
-	MainDir = ".plasma/model/compose"
-	// BuildDir is a result directory of compose action.
-	BuildDir       = MainDir + "/merged"
-	composeFile    = "compose.yaml"
+	// MainDir is a compose directory (use model.ComposeDir for external use).
+	MainDir = model.ComposeDir
+	// BuildDir is a result directory of compose action (use model.MergedDir for external use).
+	BuildDir       = model.MergedDir
 	dirPermissions = 0755
 )
 
 var (
-	errComposeNotExists = errors.New("compose.yaml doesn't exist")
+	errComposeNotExists = model.ErrComposeNotExists
+	composeFile         = model.ComposeFile
 )
 
 type keyringWrapper struct {
@@ -108,7 +110,7 @@ type Composer struct {
 
 	pwd     string
 	options *ComposerOptions
-	compose *YamlCompose
+	compose *Composition
 	k       keyring.Keyring
 }
 
@@ -209,7 +211,7 @@ func EnsureDirExists(path string) error {
 	return os.MkdirAll(path, dirPermissions)
 }
 
-func (c *Composer) getCompose() *YamlCompose {
+func (c *Composer) getCompose() *Composition {
 	return c.compose
 }
 

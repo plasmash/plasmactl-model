@@ -17,4 +17,4 @@ action:
       title: Prepare Directory
       description: Output directory for prepared model
       type: string
-      default: ".plasma/prepare"
+      default: ".plasma/model/prepare"
