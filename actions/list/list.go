@@ -83,7 +83,7 @@ func (l *List) printTreeWithRelations(cfg *compose.Composition) error {
 	// Build component→chassis map from graph
 	componentToChassis := make(map[string]string)
 	for _, n := range g.NodesByType("component") {
-		for _, e := range g.EdgesTo(n.Name, "attaches") {
+		for _, e := range g.EdgesTo(n.Name, "distributes") {
 			componentToChassis[n.Name] = e.From().Name
 		}
 	}
@@ -91,7 +91,7 @@ func (l *List) printTreeWithRelations(cfg *compose.Composition) error {
 	// Build chassis→nodes map from graph
 	chassisToNodes := make(map[string][]string)
 	for _, n := range g.NodesByType("node") {
-		for _, e := range g.EdgesFrom(n.Name, "memberof") {
+		for _, e := range g.EdgesFrom(n.Name, "allocates") {
 			chassisToNodes[e.To().Name] = append(chassisToNodes[e.To().Name], n.Name)
 		}
 	}

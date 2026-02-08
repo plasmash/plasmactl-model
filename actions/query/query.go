@@ -120,7 +120,7 @@ func (q *Query) queryByChassis(g *graph.PlatformGraph, pkgRefs map[string]string
 	// Find components attached to this chassis or descendant chassis paths
 	var componentNames []string
 	for _, n := range g.NodesByType("component") {
-		for _, e := range g.EdgesTo(n.Name, "attaches") {
+		for _, e := range g.EdgesTo(n.Name, "distributes") {
 			chassis := e.From().Name
 			if chassis == chassisPath || strings.HasPrefix(chassis, chassisPath+".") {
 				componentNames = append(componentNames, n.Name)
@@ -145,14 +145,14 @@ func (q *Query) queryByNode(g *graph.PlatformGraph, pkgRefs map[string]string, h
 
 	// Get chassis paths this node serves
 	chassisSet := make(map[string]bool)
-	for _, e := range g.EdgesFrom(nodeNode.Name, "memberof") {
+	for _, e := range g.EdgesFrom(nodeNode.Name, "allocates") {
 		chassisSet[e.To().Name] = true
 	}
 
 	// Find components attached to the node's chassis paths
 	var componentNames []string
 	for _, n := range g.NodesByType("component") {
-		for _, e := range g.EdgesTo(n.Name, "attaches") {
+		for _, e := range g.EdgesTo(n.Name, "distributes") {
 			if chassisSet[e.From().Name] {
 				componentNames = append(componentNames, n.Name)
 			}
