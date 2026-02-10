@@ -142,20 +142,21 @@ func (s *Show) buildPackageInfo(dep compose.Dependency, g *graph.PlatformGraph) 
 
 // printPackage outputs human-readable package details
 func (s *Show) printPackage(pkg PackageInfo) {
-	fmt.Printf("package\t%s\n", pkg.Name)
-	fmt.Printf("ref\t%s\n", pkg.Ref)
+	term := s.Term()
+	term.Printfln("package\t%s", pkg.Name)
+	term.Printfln("ref\t%s", pkg.Ref)
 	if pkg.URL != "" {
-		fmt.Printf("url\t%s\n", pkg.URL)
+		term.Printfln("url\t%s", pkg.URL)
 	}
-	fmt.Printf("type\t%s\n", pkg.Type)
+	term.Printfln("type\t%s", pkg.Type)
 	for _, strat := range pkg.Strategies {
-		fmt.Printf("strategy\t%s\n", strat)
+		term.Printfln("strategy\t%s", strat)
 	}
 
 	if len(pkg.Components) > 0 {
-		s.Term().Info().Printfln("Components (%d)", len(pkg.Components))
+		term.Info().Printfln("Components (%d)", len(pkg.Components))
 		for _, comp := range pkg.Components {
-			fmt.Println(comp)
+			term.Printfln("%s", comp)
 		}
 	}
 }
@@ -179,9 +180,10 @@ func (s *Show) showMerged() error {
 	}
 	sort.Strings(names)
 
-	s.Term().Info().Printfln("Components (%d)", len(components))
+	term := s.Term()
+	term.Info().Printfln("Components (%d)", len(components))
 	for _, name := range names {
-		fmt.Println(name)
+		term.Printfln("%s", name)
 	}
 
 	return nil
@@ -200,11 +202,12 @@ func (s *Show) showSrc(srcDir string) error {
 		return nil
 	}
 
-	s.Term().Info().Printfln("Source Components (%d)", len(components))
-	fmt.Printf("Location: %s\n\n", srcDir)
+	term := s.Term()
+	term.Info().Printfln("Source Components (%d)", len(components))
+	term.Printfln("Location: %s\n", srcDir)
 
 	for _, comp := range components {
-		fmt.Println(comp.Name)
+		term.Printfln("%s", comp.Name)
 	}
 
 	return nil
@@ -217,13 +220,14 @@ func (s *Show) showPackagesOnly(cfg *compose.Composition) error {
 		return nil
 	}
 
-	s.Term().Info().Printfln("Packages (%d)", len(cfg.Dependencies))
+	term := s.Term()
+	term.Info().Printfln("Packages (%d)", len(cfg.Dependencies))
 	for _, dep := range cfg.Dependencies {
 		ref := dep.Source.Ref
 		if ref == "" {
 			ref = "latest"
 		}
-		fmt.Printf("%s@%s\n", dep.Name, ref)
+		term.Printfln("%s@%s", dep.Name, ref)
 	}
 
 	return nil
@@ -237,8 +241,9 @@ func (s *Show) showOverview(cfg *compose.Composition) error {
 	}
 
 	// Show packages summary with component counts from graph
+	term := s.Term()
 	if len(cfg.Dependencies) > 0 {
-		s.Term().Info().Printfln("Packages (%d)", len(cfg.Dependencies))
+		term.Info().Printfln("Packages (%d)", len(cfg.Dependencies))
 		for _, dep := range cfg.Dependencies {
 			ref := dep.Source.Ref
 			if ref == "" {
@@ -252,7 +257,7 @@ func (s *Show) showOverview(cfg *compose.Composition) error {
 				}
 			}
 
-			fmt.Printf("  %s@%s\t(%d components)\n", dep.Name, ref, count)
+			term.Printfln("  %s@%s\t(%d components)", dep.Name, ref, count)
 		}
 	}
 
@@ -261,15 +266,15 @@ func (s *Show) showOverview(cfg *compose.Composition) error {
 	if _, err := os.Stat(srcDir); err == nil {
 		srcComponents, _ := component.LoadFromPath(srcDir)
 		if len(srcComponents) > 0 {
-			s.Term().Info().Printfln("Source (%d)", len(srcComponents))
-			fmt.Printf("  Location: %s\n", srcDir)
+			term.Info().Printfln("Source (%d)", len(srcComponents))
+			term.Printfln("  Location: %s", srcDir)
 		}
 	}
 
 	// Merged stats from graph
 	allComponents := g.NodesByType("component")
 	if len(allComponents) > 0 {
-		s.Term().Info().Printfln("Merged: %d components total", len(allComponents))
+		term.Info().Printfln("Merged: %d components total", len(allComponents))
 	}
 
 	return nil

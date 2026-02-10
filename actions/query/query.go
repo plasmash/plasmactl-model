@@ -90,8 +90,9 @@ func (q *Query) Execute() error {
 
 	q.result.Packages = unique
 
+	term := q.Term()
 	for _, pkg := range unique {
-		fmt.Println(pkg)
+		term.Printfln("%s", pkg)
 	}
 
 	return nil
