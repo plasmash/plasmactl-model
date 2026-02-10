@@ -42,8 +42,7 @@ func (l *List) Result() any {
 func (l *List) Execute() error {
 	cfg, err := compose.Lookup(os.DirFS(l.WorkingDir))
 	if err != nil {
-		l.Term().Error().Println("compose.yaml not found")
-		return nil
+		return fmt.Errorf("compose.yaml not found: %w", err)
 	}
 
 	// Build result
