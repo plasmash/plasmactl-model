@@ -193,7 +193,9 @@ func (p *Prepare) flattenSrcDirectory() error {
 	}
 
 	// Remove empty src directory
-	os.Remove(srcDir)
+	if err := os.Remove(srcDir); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("failed to remove src/ directory: %w", err)
+	}
 	p.Term().Info().Println("  ✓ Flattened src/")
 	return nil
 }
@@ -323,10 +325,14 @@ func (p *Prepare) renameVariablesToGroupVars() (int, error) {
 				srcPath := filepath.Join(nestedVars, entry.Name())
 				destPath := filepath.Join(groupVarsDir, entry.Name())
 				if _, err := os.Stat(destPath); os.IsNotExist(err) {
-					os.Rename(srcPath, destPath)
+					if err := os.Rename(srcPath, destPath); err != nil {
+						return count, fmt.Errorf("failed to move %s to group_vars: %w", entry.Name(), err)
+					}
 				}
 			}
-			os.RemoveAll(nestedVars)
+			if err := os.RemoveAll(nestedVars); err != nil {
+				return count, fmt.Errorf("failed to remove nested variables/ directory: %w", err)
+			}
 		}
 	}
 
