@@ -80,6 +80,8 @@ func (l *List) printTreeWithRelations(cfg *compose.Composition) error {
 		return fmt.Errorf("failed to load graph: %w", err)
 	}
 
+	term := l.Term()
+
 	// Build component→chassis map from graph
 	componentToChassis := make(map[string]string)
 	for _, n := range g.NodesByType("component") {
@@ -106,7 +108,7 @@ func (l *List) printTreeWithRelations(cfg *compose.Composition) error {
 		}
 
 		// Print package header
-		fmt.Printf("📦 %s@%s\n", dep.Name, ref)
+		term.Printfln("📦 %s@%s", dep.Name, ref)
 
 		// Get components in this package from graph
 		var pkgComponents []string
@@ -134,7 +136,7 @@ func (l *List) printTreeWithRelations(cfg *compose.Composition) error {
 			if n != nil {
 				version = n.Version
 			}
-			fmt.Printf("%s🧩 %s\n", compPrefix, component.FormatDisplayName(compName, version))
+			term.Printfln("%s🧩 %s", compPrefix, component.FormatDisplayName(compName, version))
 
 			// Get chassis path for this component
 			chassisPath := componentToChassis[compName]
@@ -157,7 +159,7 @@ func (l *List) printTreeWithRelations(cfg *compose.Composition) error {
 				} else {
 					childPrefix = compIndent + "├── "
 				}
-				fmt.Printf("%s📍 %s\n", childPrefix, chassisPath)
+				term.Printfln("%s📍 %s", childPrefix, chassisPath)
 			}
 
 			// Print nodes that serve this chassis path
@@ -170,12 +172,12 @@ func (l *List) printTreeWithRelations(cfg *compose.Composition) error {
 				} else {
 					childPrefix = compIndent + "├── "
 				}
-				fmt.Printf("%s🖥  %s\n", childPrefix, nd)
+				term.Printfln("%s🖥  %s", childPrefix, nd)
 			}
 		}
 
 		if pi < len(cfg.Dependencies)-1 {
-			fmt.Println()
+			term.Printfln("")
 		}
 	}
 
