@@ -54,8 +54,7 @@ func (s *Show) Result() any {
 func (s *Show) Execute() error {
 	cfg, err := compose.Lookup(os.DirFS(s.WorkingDir))
 	if err != nil {
-		s.Term().Error().Println("compose.yaml not found")
-		return nil
+		return fmt.Errorf("compose.yaml not found: %w", err)
 	}
 
 	// Initialize result
@@ -97,8 +96,7 @@ func (s *Show) Execute() error {
 				return nil
 			}
 		}
-		s.Term().Error().Printfln("Package %q not found", pkgName)
-		return nil
+		return fmt.Errorf("package %q not found", pkgName)
 	}
 
 	// Default: show model overview (packages + src + stats)

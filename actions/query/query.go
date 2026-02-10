@@ -32,8 +32,7 @@ type Query struct {
 func (q *Query) Execute() error {
 	cfg, err := model.Lookup(os.DirFS(q.WorkingDir))
 	if err != nil {
-		q.Term().Error().Println("model.yaml not found")
-		return nil
+		return fmt.Errorf("model.yaml not found: %w", err)
 	}
 
 	g, err := graph.Load()
