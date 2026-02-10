@@ -46,13 +46,13 @@ func (l *List) Execute() error {
 		return nil
 	}
 
+	// Build result
+	l.result = &ListResult{}
+
 	if len(cfg.Dependencies) == 0 {
 		l.Term().Info().Println("No package dependencies")
 		return nil
 	}
-
-	// Build result
-	l.result = &ListResult{}
 	for _, dep := range cfg.Dependencies {
 		ref := dep.Source.Ref
 		if ref == "" {
