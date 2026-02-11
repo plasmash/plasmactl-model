@@ -167,3 +167,5 @@ require (
 replace github.com/plasmash/plasmactl-component => ../plasmactl-component
 
 replace github.com/plasmash/plasmactl-platform => ../plasmactl-platform
+
+replace github.com/launchrctl/launchr => ../launchr

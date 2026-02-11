@@ -35,3 +35,14 @@ action:
         Strategy paths. paths separated by |, strategies are comma separated (path/1|path/2,path/1|path/2)
       type: array
       default: []
+  result:
+    type: object
+    properties:
+      package:
+        type: string
+      type:
+        type: string
+      ref:
+        type: string
+      url:
+        type: string

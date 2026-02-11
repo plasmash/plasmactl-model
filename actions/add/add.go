@@ -9,6 +9,14 @@ import (
 	"github.com/plasmash/plasmactl-model/internal/compose"
 )
 
+// AddResult is the structured result of model:add.
+type AddResult struct {
+	Package string `json:"package"`
+	Type    string `json:"type,omitempty"`
+	Ref     string `json:"ref,omitempty"`
+	URL     string `json:"url,omitempty"`
+}
+
 // Add implements the model:add action
 type Add struct {
 	action.WithLogger
@@ -22,6 +30,13 @@ type Add struct {
 	URL          string
 	Strategy     []string
 	StrategyPath []string
+
+	result *AddResult
+}
+
+// Result returns the structured result for JSON output.
+func (a *Add) Result() any {
+	return a.result
 }
 
 // Execute runs the model:add action
@@ -55,7 +70,17 @@ func (a *Add) Execute() error {
 	fa.SetLogger(a.Log())
 	fa.SetTerm(a.Term())
 
-	return fa.AddPackage(a.AllowCreate, dependency, rawStrategies, a.WorkingDir)
+	if err := fa.AddPackage(a.AllowCreate, dependency, rawStrategies, a.WorkingDir); err != nil {
+		return err
+	}
+
+	a.result = &AddResult{
+		Package: a.Package,
+		Type:    a.Type,
+		Ref:     ref,
+		URL:     a.URL,
+	}
+	return nil
 }
 
 // validate validates input options

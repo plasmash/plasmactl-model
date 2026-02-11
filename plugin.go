@@ -66,7 +66,7 @@ func (p *Plugin) DiscoverActions(_ context.Context) ([]*action.Action, error) {
 	// Action model:compose.
 	composeYaml, _ := actionYamlFS.ReadFile("actions/compose/compose.yaml")
 	composeAction := action.NewFromYAML("model:compose", composeYaml)
-	composeAction.SetRuntime(action.NewFnRuntime(func(_ context.Context, a *action.Action) error {
+	composeAction.SetRuntime(action.NewFnRuntimeWithResult(func(_ context.Context, a *action.Action) (any, error) {
 		input := a.Input()
 		log, term := getLogger(a)
 		c := &compose.Compose{
@@ -80,16 +80,17 @@ func (p *Plugin) DiscoverActions(_ context.Context) ([]*action.Action, error) {
 		}
 		c.SetLogger(log)
 		c.SetTerm(term)
-		return c.Execute()
+		err := c.Execute()
+		return c.Result(), err
 	}))
 
 	// Action model:add.
 	addYaml, _ := actionYamlFS.ReadFile("actions/add/add.yaml")
 	addAction := action.NewFromYAML("model:add", addYaml)
-	addAction.SetRuntime(action.NewFnRuntime(func(_ context.Context, a *action.Action) error {
+	addAction.SetRuntime(action.NewFnRuntimeWithResult(func(_ context.Context, a *action.Action) (any, error) {
 		input := a.Input()
 		log, term := getLogger(a)
-		add := &add.Add{
+		ad := &add.Add{
 			WorkingDir:   p.wd,
 			AllowCreate:  input.Opt("allow-create").(bool),
 			Package:      input.Opt("package").(string),
@@ -99,15 +100,16 @@ func (p *Plugin) DiscoverActions(_ context.Context) ([]*action.Action, error) {
 			Strategy:     action.InputOptSlice[string](input, "strategy"),
 			StrategyPath: action.InputOptSlice[string](input, "strategy-path"),
 		}
-		add.SetLogger(log)
-		add.SetTerm(term)
-		return add.Execute()
+		ad.SetLogger(log)
+		ad.SetTerm(term)
+		err := ad.Execute()
+		return ad.Result(), err
 	}))
 
 	// Action model:update.
 	updateYaml, _ := actionYamlFS.ReadFile("actions/update/update.yaml")
 	updateAction := action.NewFromYAML("model:update", updateYaml)
-	updateAction.SetRuntime(action.NewFnRuntime(func(_ context.Context, a *action.Action) error {
+	updateAction.SetRuntime(action.NewFnRuntimeWithResult(func(_ context.Context, a *action.Action) (any, error) {
 		input := a.Input()
 		log, term := getLogger(a)
 		u := &update.Update{
@@ -121,60 +123,64 @@ func (p *Plugin) DiscoverActions(_ context.Context) ([]*action.Action, error) {
 		}
 		u.SetLogger(log)
 		u.SetTerm(term)
-		return u.Execute()
+		err := u.Execute()
+		return u.Result(), err
 	}))
 
 	// Action model:remove.
 	removeYaml, _ := actionYamlFS.ReadFile("actions/remove/remove.yaml")
 	removeAction := action.NewFromYAML("model:remove", removeYaml)
-	removeAction.SetRuntime(action.NewFnRuntime(func(_ context.Context, a *action.Action) error {
+	removeAction.SetRuntime(action.NewFnRuntimeWithResult(func(_ context.Context, a *action.Action) (any, error) {
 		input := a.Input()
 		log, term := getLogger(a)
-		r := &remove.Remove{
+		rm := &remove.Remove{
 			WorkingDir: p.wd,
 			Packages:   action.InputOptSlice[string](input, "packages"),
 		}
-		r.SetLogger(log)
-		r.SetTerm(term)
-		return r.Execute()
+		rm.SetLogger(log)
+		rm.SetTerm(term)
+		err := rm.Execute()
+		return rm.Result(), err
 	}))
 
 	// Action model:prepare - transforms composed model for Ansible deployment.
 	prepareYaml, _ := actionYamlFS.ReadFile("actions/prepare/prepare.yaml")
 	prepareActionDef := action.NewFromYAML("model:prepare", prepareYaml)
-	prepareActionDef.SetRuntime(action.NewFnRuntime(func(_ context.Context, a *action.Action) error {
+	prepareActionDef.SetRuntime(action.NewFnRuntimeWithResult(func(_ context.Context, a *action.Action) (any, error) {
 		input := a.Input()
 		log, term := getLogger(a)
-		p := &prepare.Prepare{
+		pr := &prepare.Prepare{
 			ComposeDir: input.Opt("compose-dir").(string),
 			PrepareDir: input.Opt("prepare-dir").(string),
 			Clean:      input.Opt("clean").(bool),
 		}
-		p.SetLogger(log)
-		p.SetTerm(term)
-		return p.Execute()
+		pr.SetLogger(log)
+		pr.SetTerm(term)
+		err := pr.Execute()
+		return pr.Result(), err
 	}))
 
 	// Action model:bundle - creates Platform Model (.pm) bundle.
 	bundleYaml, _ := actionYamlFS.ReadFile("actions/bundle/bundle.yaml")
 	bundleAction := action.NewFromYAML("model:bundle", bundleYaml)
-	bundleAction.SetRuntime(action.NewFnRuntime(func(_ context.Context, a *action.Action) error {
+	bundleAction.SetRuntime(action.NewFnRuntimeWithResult(func(_ context.Context, a *action.Action) (any, error) {
 		log, term := getLogger(a)
 		b := &bundle.Bundle{
 			HasPrepareAction: true,
 		}
 		b.SetLogger(log)
 		b.SetTerm(term)
-		return b.Execute()
+		err := b.Execute()
+		return b.Result(), err
 	}))
 
 	// Action model:release - creates git tags with changelog and uploads artifact to forge.
 	releaseYaml, _ := actionYamlFS.ReadFile("actions/release/release.yaml")
 	releaseAction := action.NewFromYAML("model:release", releaseYaml)
-	releaseAction.SetRuntime(action.NewFnRuntime(func(_ context.Context, a *action.Action) error {
+	releaseAction.SetRuntime(action.NewFnRuntimeWithResult(func(_ context.Context, a *action.Action) (any, error) {
 		input := a.Input()
 		log, term := getLogger(a)
-		r := &release.Release{
+		rel := &release.Release{
 			Keyring:  p.k,
 			Version:  input.Arg("version").(string),
 			DryRun:   input.Opt("dry-run").(bool),
@@ -182,9 +188,10 @@ func (p *Plugin) DiscoverActions(_ context.Context) ([]*action.Action, error) {
 			ForgeURL: input.Opt("forge-url").(string),
 			Token:    input.Opt("token").(string),
 		}
-		r.SetLogger(log)
-		r.SetTerm(term)
-		return r.Execute()
+		rel.SetLogger(log)
+		rel.SetTerm(term)
+		err := rel.Execute()
+		return rel.Result(), err
 	}))
 
 	// Action model:list - lists package dependencies.

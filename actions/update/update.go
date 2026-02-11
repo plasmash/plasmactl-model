@@ -9,6 +9,14 @@ import (
 	"github.com/plasmash/plasmactl-model/internal/compose"
 )
 
+// UpdateResult is the structured result of model:update.
+type UpdateResult struct {
+	Package string `json:"package,omitempty"`
+	Type    string `json:"type,omitempty"`
+	Ref     string `json:"ref,omitempty"`
+	URL     string `json:"url,omitempty"`
+}
+
 // Update implements the model:update action
 type Update struct {
 	action.WithLogger
@@ -21,6 +29,13 @@ type Update struct {
 	URL          string
 	Strategy     []string
 	StrategyPath []string
+
+	result *UpdateResult
+}
+
+// Result returns the structured result for JSON output.
+func (u *Update) Result() any {
+	return u.result
 }
 
 // Execute runs the model:update action
@@ -36,7 +51,11 @@ func (u *Update) Execute() error {
 
 	// If no package specified, run interactive update
 	if u.Package == "" {
-		return fa.UpdatePackages(u.WorkingDir)
+		if err := fa.UpdatePackages(u.WorkingDir); err != nil {
+			return err
+		}
+		u.result = &UpdateResult{}
+		return nil
 	}
 
 	// Clear ref for HTTP type
@@ -59,7 +78,17 @@ func (u *Update) Execute() error {
 		Paths: u.StrategyPath,
 	}
 
-	return fa.UpdatePackage(dependency, rawStrategies, u.WorkingDir)
+	if err := fa.UpdatePackage(dependency, rawStrategies, u.WorkingDir); err != nil {
+		return err
+	}
+
+	u.result = &UpdateResult{
+		Package: u.Package,
+		Type:    u.Type,
+		Ref:     ref,
+		URL:     u.URL,
+	}
+	return nil
 }
 
 // validate validates input options

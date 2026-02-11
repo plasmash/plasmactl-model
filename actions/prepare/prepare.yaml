@@ -18,3 +18,18 @@ action:
       description: Output directory for prepared model
       type: string
       default: ".plasma/model/prepare"
+  result:
+    type: object
+    properties:
+      layers:
+        type: array
+        items:
+          type: string
+      components_moved:
+        type: integer
+      galaxy_files:
+        type: integer
+      symlinks:
+        type: integer
+      group_vars_renamed:
+        type: integer

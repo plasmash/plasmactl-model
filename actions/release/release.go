@@ -12,6 +12,15 @@ import (
 
 const imageDir = "img"
 
+// ReleaseResult is the structured result of model:release.
+type ReleaseResult struct {
+	Tag       string `json:"tag"`
+	DryRun    bool   `json:"dry_run"`
+	TagOnly   bool   `json:"tag_only"`
+	ReleaseID string `json:"release_id,omitempty"`
+	Asset     string `json:"asset,omitempty"`
+}
+
 // Release implements the model:release command
 type Release struct {
 	action.WithLogger
@@ -23,6 +32,13 @@ type Release struct {
 	TagOnly  bool
 	ForgeURL string
 	Token    string
+
+	result *ReleaseResult
+}
+
+// Result returns the structured result for JSON output.
+func (r *Release) Result() any {
+	return r.result
 }
 
 // Execute runs the release action
@@ -118,6 +134,7 @@ func (r *Release) Execute() error {
 
 	// Dry run - stop here
 	if r.DryRun {
+		r.result = &ReleaseResult{Tag: newTag, DryRun: true, TagOnly: r.TagOnly}
 		r.Term().Println()
 		r.Term().Warning().Println("Dry run - no changes made.")
 		r.Term().Info().Printfln("Would create tag: %s", newTag)
@@ -144,6 +161,7 @@ func (r *Release) Execute() error {
 
 	// Tag only mode - stop here
 	if r.TagOnly {
+		r.result = &ReleaseResult{Tag: newTag, TagOnly: true}
 		r.Term().Println()
 		r.Term().Success().Printfln("Tag %s created and pushed.", newTag)
 		return nil
@@ -203,6 +221,7 @@ func (r *Release) Execute() error {
 	// Find and upload Platform Model (.pm) file
 	image := findImage(imageDir)
 	if image == "" {
+		r.result = &ReleaseResult{Tag: newTag, ReleaseID: releaseID}
 		r.Term().Println()
 		r.Term().Warning().Printfln("No Platform Model (.pm) found in %s - skipping artifact upload.", imageDir)
 		r.Term().Println()
@@ -216,6 +235,8 @@ func (r *Release) Execute() error {
 	if err := forge.UploadAsset(releaseID, image); err != nil {
 		return fmt.Errorf("failed to upload asset: %w", err)
 	}
+
+	r.result = &ReleaseResult{Tag: newTag, ReleaseID: releaseID, Asset: image}
 
 	r.Term().Println()
 	r.Term().Success().Printfln("Release %s created successfully with Platform Model!", newTag)

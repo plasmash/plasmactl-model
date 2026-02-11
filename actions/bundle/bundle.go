@@ -16,12 +16,26 @@ import (
 	"github.com/plasmash/plasmactl-model/pkg/model"
 )
 
+// BundleResult is the structured result of model:bundle.
+type BundleResult struct {
+	BundlePath string `json:"bundle_path"`
+	RepoName   string `json:"repo_name"`
+	Version    string `json:"version"`
+}
+
 // Bundle implements the model:bundle command
 type Bundle struct {
 	action.WithLogger
 	action.WithTerm
 
 	HasPrepareAction bool
+
+	result *BundleResult
+}
+
+// Result returns the structured result for JSON output.
+func (b *Bundle) Result() any {
+	return b.result
 }
 
 // Execute runs the model:bundle action
@@ -63,6 +77,12 @@ func (b *Bundle) Execute() error {
 	err = createArchive(srcDir, bundleTempDir, bundleFinalDir, bundleFile)
 	if err != nil {
 		return fmt.Errorf("error creating bundle: %w", err)
+	}
+
+	b.result = &BundleResult{
+		BundlePath: filepath.Join(bundleFinalDir, bundleFile),
+		RepoName:   repoName,
+		Version:    version,
 	}
 
 	b.Term().Success().Printfln("Platform Model bundle created: %s/%s", bundleFinalDir, bundleFile)
