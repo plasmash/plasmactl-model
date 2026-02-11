@@ -8,3 +8,10 @@ action:
       description: List of packages to remove. Comma separated.
       type: array
       default: []
+  result:
+    type: object
+    properties:
+      packages:
+        type: array
+        items:
+          type: string

@@ -32,5 +32,19 @@ action:
             url: "{{ .forge_url }}"
             optional: true
 
+  result:
+    type: object
+    properties:
+      tag:
+        type: string
+      dry_run:
+        type: boolean
+      tag_only:
+        type: boolean
+      release_id:
+        type: string
+      asset:
+        type: string
+
 runtime:
   type: plugin

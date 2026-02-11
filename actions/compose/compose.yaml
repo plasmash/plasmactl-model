@@ -30,3 +30,8 @@ action:
       description: Interactive mode allows to submit user credentials during action
       type: boolean
       default: true
+  result:
+    type: object
+    properties:
+      status:
+        type: string

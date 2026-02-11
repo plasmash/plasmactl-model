@@ -41,6 +41,15 @@ var componentTypes = map[string]bool{
 	"actions":      true,
 }
 
+// PrepareResult is the structured result of model:prepare.
+type PrepareResult struct {
+	Layers           []string `json:"layers"`
+	ComponentsMoved  int      `json:"components_moved"`
+	GalaxyFiles      int      `json:"galaxy_files"`
+	Symlinks         int      `json:"symlinks"`
+	GroupVarsRenamed int      `json:"group_vars_renamed"`
+}
+
 // Prepare implements the model:prepare command
 type Prepare struct {
 	action.WithLogger
@@ -51,6 +60,12 @@ type Prepare struct {
 	Clean      bool
 
 	layers []string
+	result *PrepareResult
+}
+
+// Result returns the structured result for JSON output.
+func (p *Prepare) Result() any {
+	return p.result
 }
 
 // Execute runs the model:prepare action
@@ -125,6 +140,14 @@ func (p *Prepare) Execute() error {
 		p.Term().Warning().Printfln("  ! Library not copied: %v", err)
 	} else {
 		p.Term().Info().Println("  ✓ Copied library/")
+	}
+
+	p.result = &PrepareResult{
+		Layers:           p.layers,
+		ComponentsMoved:  componentsMoved,
+		GalaxyFiles:      galaxyCount,
+		Symlinks:         symlinksCreated,
+		GroupVarsRenamed: layersRenamed,
 	}
 
 	p.Term().Success().Println("Preparation completed.")

@@ -2,3 +2,12 @@ runtime: plugin
 action:
   title: Bundle
   description: Create platform model bundle (.pm)
+  result:
+    type: object
+    properties:
+      bundle_path:
+        type: string
+      repo_name:
+        type: string
+      version:
+        type: string
