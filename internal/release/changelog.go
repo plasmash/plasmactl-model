@@ -48,7 +48,7 @@ type ChangelogGenerator struct {
 
 // NewChangelogGenerator creates a new ChangelogGenerator
 func NewChangelogGenerator(workDir string) (*ChangelogGenerator, error) {
-	repo, err := git.PlainOpen(workDir)
+	repo, err := git.PlainOpenWithOptions(workDir, &git.PlainOpenOptions{EnableDotGitCommonDir: true})
 	if err != nil {
 		return nil, fmt.Errorf("failed to open repository: %w", err)
 	}
