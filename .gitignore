@@ -1,5 +1,6 @@
 /bin
 /build_*
+/cmd
 .idea
 *.tar
 *.gz
