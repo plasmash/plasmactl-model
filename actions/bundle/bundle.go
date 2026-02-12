@@ -92,7 +92,7 @@ func (b *Bundle) Execute() error {
 // getRepoInfo returns repository name, version (tag or commit SHA), and error
 func getRepoInfo() (repoName, version string, err error) {
 	// Open repository
-	r, err := git.PlainOpen(".")
+	r, err := git.PlainOpenWithOptions(".", &git.PlainOpenOptions{EnableDotGitCommonDir: true})
 	if err != nil {
 		return "", "", err
 	}

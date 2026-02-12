@@ -475,7 +475,7 @@ func (p *Prepare) createPlatformSymlinks() (int, error) {
 
 // getVersion gets version from git tag, fallback to 1.0.0
 func (p *Prepare) getVersion() string {
-	r, err := git.PlainOpen(".")
+	r, err := git.PlainOpenWithOptions(".", &git.PlainOpenOptions{EnableDotGitCommonDir: true})
 	if err != nil {
 		return "1.0.0"
 	}
