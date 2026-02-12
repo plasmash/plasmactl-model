@@ -216,9 +216,9 @@ func (c *ChangelogGenerator) formatChangelog(commitsByType map[string][]*ParsedC
 
 func (c *ChangelogGenerator) formatCommit(sb *strings.Builder, commit *ParsedCommit) {
 	if commit.Scope != "" {
-		sb.WriteString(fmt.Sprintf("- **%s**: %s (%s)\n", commit.Scope, commit.Description, commit.Hash))
+		fmt.Fprintf(sb, "- **%s**: %s (%s)\n", commit.Scope, commit.Description, commit.Hash)
 	} else {
-		sb.WriteString(fmt.Sprintf("- %s (%s)\n", commit.Description, commit.Hash))
+		fmt.Fprintf(sb, "- %s (%s)\n", commit.Description, commit.Hash)
 	}
 }
 
