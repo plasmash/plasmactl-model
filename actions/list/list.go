@@ -68,7 +68,10 @@ func (l *List) Execute() error {
 		return l.printTreeWithRelations(cfg)
 	}
 
-	// Structured result is auto-formatted by launchr
+	term := l.Term()
+	for _, pkg := range l.result.Packages {
+		term.Printfln("%s@%s", pkg.Name, pkg.Ref)
+	}
 	return nil
 }
 
