@@ -102,14 +102,19 @@ func (q *Query) Result() any {
 	return q.result
 }
 
-// queryByComponent finds packages that provide a specific component
+// queryByComponent finds packages that provide a specific component.
+// Both "package" nodes (external deps) and "model" nodes (local root) use
+// contains edges — model ⊃ package, so both are valid answers.
 func (q *Query) queryByComponent(g *graph.PlatformGraph, pkgRefs map[string]string, componentName string) []string {
 	var found []string
 	for _, e := range g.EdgesTo(componentName, "contains") {
-		if e.From().Type == "package" {
+		switch e.From().Type {
+		case "package":
 			if ref, ok := pkgRefs[e.From().Name]; ok {
 				found = append(found, fmt.Sprintf("%s@%s", e.From().Name, ref))
 			}
+		case "model":
+			found = append(found, fmt.Sprintf("%s@%s", e.From().Name, e.From().Version))
 		}
 	}
 	return found
