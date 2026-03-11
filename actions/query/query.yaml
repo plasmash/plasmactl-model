@@ -1,17 +1,17 @@
 runtime: plugin
 action:
   title: Query
-  description: Query packages by component, chassis, or node
+  description: Query packages by component, zone, or node
   arguments:
     - name: identifier
       title: Identifier
-      description: Component name, chassis section, or node hostname to search for
+      description: Component name, zone, or node hostname to search for
       required: true
   options:
     - name: kind
       shorthand: k
       title: Kind
-      description: Identifier kind to skip auto-detection (component, chassis, node)
+      description: Identifier kind to skip auto-detection (component, zone, node)
       type: string
       default: ""
   result:

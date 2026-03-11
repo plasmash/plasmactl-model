@@ -17,9 +17,9 @@ action:
       description: Show only local src/ components
       type: boolean
       default: false
-    - name: merged
-      title: Merged
-      description: Show merged composition result
+    - name: composed
+      title: Composed
+      description: Show composed result
       type: boolean
       default: false
   result:
