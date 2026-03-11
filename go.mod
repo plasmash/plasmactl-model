@@ -164,7 +164,7 @@ require (
 	sigs.k8s.io/yaml v1.6.0 // indirect
 )
 
-replace github.com/plasmash/plasmactl-topology => ../plasmactl-chassis
+replace github.com/plasmash/plasmactl-topology => ../plasmactl-topology
 
 replace github.com/plasmash/plasmactl-component => ../plasmactl-component
 
