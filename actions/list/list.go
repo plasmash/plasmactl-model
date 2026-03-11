@@ -75,7 +75,7 @@ func (l *List) Execute() error {
 	return nil
 }
 
-// printTreeWithRelations prints packages as a tree with components, chassis paths, and nodes
+// printTreeWithRelations prints packages as a tree with components, zones, and nodes
 func (l *List) printTreeWithRelations(cfg *compose.Composition) error {
 	g, err := graph.Load()
 	if err != nil {
@@ -84,23 +84,23 @@ func (l *List) printTreeWithRelations(cfg *compose.Composition) error {
 
 	term := l.Term()
 
-	// Build component→chassis map from graph
-	componentToChassis := make(map[string]string)
+	// Build component→zone map from graph
+	componentToZone := make(map[string]string)
 	for _, n := range g.NodesByType("component") {
 		for _, e := range g.EdgesTo(n.Name, "distributes") {
-			componentToChassis[n.Name] = e.From().Name
+			componentToZone[n.Name] = e.From().Name
 		}
 	}
 
-	// Build chassis→nodes map from graph
-	chassisToNodes := make(map[string][]string)
+	// Build zone→nodes map from graph
+	zoneToNodes := make(map[string][]string)
 	for _, n := range g.NodesByType("node") {
 		for _, e := range g.EdgesFrom(n.Name, "allocates") {
-			chassisToNodes[e.To().Name] = append(chassisToNodes[e.To().Name], n.Name)
+			zoneToNodes[e.To().Name] = append(zoneToNodes[e.To().Name], n.Name)
 		}
 	}
-	for k := range chassisToNodes {
-		sort.Strings(chassisToNodes[k])
+	for k := range zoneToNodes {
+		sort.Strings(zoneToNodes[k])
 	}
 
 	for pi, dep := range cfg.Dependencies {
@@ -140,19 +140,19 @@ func (l *List) printTreeWithRelations(cfg *compose.Composition) error {
 			}
 			term.Printfln("%s🧩 %s", compPrefix, component.FormatDisplayName(compName, version))
 
-			// Get chassis path for this component
-			chassisPath := componentToChassis[compName]
-			nodes := chassisToNodes[chassisPath]
+			// Get zone for this component
+			zonePath := componentToZone[compName]
+			nodes := zoneToNodes[zonePath]
 			totalChildren := 0
-			if chassisPath != "" {
+			if zonePath != "" {
 				totalChildren++
 			}
 			totalChildren += len(nodes)
 
 			childIdx := 0
 
-			// Print chassis path
-			if chassisPath != "" {
+			// Print zone
+			if zonePath != "" {
 				childIdx++
 				isLast := childIdx == totalChildren
 				var childPrefix string
@@ -161,10 +161,10 @@ func (l *List) printTreeWithRelations(cfg *compose.Composition) error {
 				} else {
 					childPrefix = compIndent + "├── "
 				}
-				term.Printfln("%s📍 %s", childPrefix, chassisPath)
+				term.Printfln("%s📍 %s", childPrefix, zonePath)
 			}
 
-			// Print nodes that serve this chassis path
+			// Print nodes that serve this zone
 			for _, nd := range nodes {
 				childIdx++
 				isLast := childIdx == totalChildren

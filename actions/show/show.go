@@ -40,7 +40,7 @@ type Show struct {
 	// Filter flags
 	Packages bool // Show only external packages
 	Src      bool // Show only local src/ components
-	Merged   bool // Show merged composition result
+	Composed bool // Show composed result
 
 	result *ShowResult
 }
@@ -60,9 +60,9 @@ func (s *Show) Execute() error {
 	// Initialize result
 	s.result = &ShowResult{}
 
-	// Handle --merged flag: show merged composition from graph
-	if s.Merged {
-		return s.showMerged()
+	// Handle --composed flag: show composed result from graph
+	if s.Composed {
+		return s.showComposed()
 	}
 
 	// Handle --src flag: show only local src/ components (filesystem-based)
@@ -159,8 +159,8 @@ func (s *Show) printPackage(pkg PackageInfo) {
 	}
 }
 
-// showMerged displays the merged composition result from the graph
-func (s *Show) showMerged() error {
+// showComposed displays the composed result from the graph
+func (s *Show) showComposed() error {
 	g, err := graph.Load()
 	if err != nil {
 		return fmt.Errorf("failed to load graph: %w", err)
@@ -269,10 +269,10 @@ func (s *Show) showOverview(cfg *compose.Composition) error {
 		}
 	}
 
-	// Merged stats from graph
+	// Composed stats from graph
 	allComponents := g.NodesByType("component")
 	if len(allComponents) > 0 {
-		term.Info().Printfln("Merged: %d components total", len(allComponents))
+		term.Info().Printfln("Composed: %d components total", len(allComponents))
 	}
 
 	return nil

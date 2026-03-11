@@ -225,7 +225,7 @@ func (p *Plugin) DiscoverActions(_ context.Context) ([]*action.Action, error) {
 			Package:    pkg,
 			Packages:   input.Opt("packages").(bool),
 			Src:        input.Opt("src").(bool),
-			Merged:     input.Opt("merged").(bool),
+			Composed:   input.Opt("composed").(bool),
 		}
 		s.SetLogger(log)
 		s.SetTerm(term)
@@ -233,7 +233,7 @@ func (p *Plugin) DiscoverActions(_ context.Context) ([]*action.Action, error) {
 		return s.Result(), err
 	}))
 
-	// Action model:query - queries packages by component, chassis path, or node.
+	// Action model:query - queries packages by component, zone, or node.
 	queryYaml, _ := actionYamlFS.ReadFile("actions/query/query.yaml")
 	queryAction := action.NewFromYAML("model:query", queryYaml)
 	queryAction.SetRuntime(action.NewFnRuntimeWithResult(func(_ context.Context, a *action.Action) (any, error) {

@@ -23,7 +23,7 @@ type Query struct {
 
 	WorkingDir string
 	Identifier string
-	Kind       string // "component", "chassis", or "node" to skip auto-detection
+	Kind       string // "component", "zone", or "node" to skip auto-detection
 
 	result QueryResult
 }
@@ -56,15 +56,15 @@ func (q *Query) Execute() error {
 	switch q.Kind {
 	case "component":
 		found = q.queryByComponent(g, pkgRefs, q.Identifier)
-	case "chassis":
-		found = q.queryByChassis(g, pkgRefs, q.Identifier)
+	case "zone":
+		found = q.queryByZone(g, pkgRefs, q.Identifier)
 	case "node":
 		found = q.queryByNode(g, pkgRefs, q.Identifier)
 	default:
-		// Auto-detect: try component, then chassis, then node
+		// Auto-detect: try component, then zone, then node
 		found = q.queryByComponent(g, pkgRefs, q.Identifier)
 		if len(found) == 0 {
-			found = q.queryByChassis(g, pkgRefs, q.Identifier)
+			found = q.queryByZone(g, pkgRefs, q.Identifier)
 		}
 		if len(found) == 0 {
 			found = q.queryByNode(g, pkgRefs, q.Identifier)
@@ -120,14 +120,14 @@ func (q *Query) queryByComponent(g *graph.PlatformGraph, pkgRefs map[string]stri
 	return found
 }
 
-// queryByChassis finds packages with components attached to a chassis path
-func (q *Query) queryByChassis(g *graph.PlatformGraph, pkgRefs map[string]string, chassisPath string) []string {
-	// Find components attached to this chassis or descendant chassis paths
+// queryByZone finds packages with components attached to a zone
+func (q *Query) queryByZone(g *graph.PlatformGraph, pkgRefs map[string]string, zonePath string) []string {
+	// Find components attached to this zone or descendant zones
 	var componentNames []string
 	for _, n := range g.NodesByType("component") {
 		for _, e := range g.EdgesTo(n.Name, "distributes") {
-			chassis := e.From().Name
-			if chassis == chassisPath || strings.HasPrefix(chassis, chassisPath+".") {
+			zone := e.From().Name
+			if zone == zonePath || strings.HasPrefix(zone, zonePath+".") {
 				componentNames = append(componentNames, n.Name)
 			}
 		}
@@ -148,17 +148,17 @@ func (q *Query) queryByNode(g *graph.PlatformGraph, pkgRefs map[string]string, h
 		return nil
 	}
 
-	// Get chassis paths this node serves
-	chassisSet := make(map[string]bool)
+	// Get zones this node serves
+	zoneSet := make(map[string]bool)
 	for _, e := range g.EdgesFrom(nodeNode.Name, "allocates") {
-		chassisSet[e.To().Name] = true
+		zoneSet[e.To().Name] = true
 	}
 
-	// Find components attached to the node's chassis paths
+	// Find components attached to the node's zones
 	var componentNames []string
 	for _, n := range g.NodesByType("component") {
 		for _, e := range g.EdgesTo(n.Name, "distributes") {
-			if chassisSet[e.From().Name] {
+			if zoneSet[e.From().Name] {
 				componentNames = append(componentNames, n.Name)
 			}
 		}
