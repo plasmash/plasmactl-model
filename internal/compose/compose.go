@@ -166,7 +166,7 @@ func (c *Composer) RunInstall() error {
 		kw.SetLogger(c.Log())
 		kw.SetTerm(c.Term())
 		dm := CreateDownloadManager(kw)
-		packages, err := dm.Download(ctx, c.getCompose(), packagesDir)
+		packages, requiredBy, err := dm.Download(ctx, c.getCompose(), packagesDir)
 		if err != nil {
 			return err
 		}
@@ -176,6 +176,7 @@ func (c *Composer) RunInstall() error {
 			buildDir,
 			packagesDir,
 			packages,
+			requiredBy,
 		)
 		return builder.build(ctx)
 	}
