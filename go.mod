@@ -11,6 +11,7 @@ require (
 	github.com/leodido/go-conventionalcommits v0.12.0
 	github.com/plasmash/plasmactl-component v1.2.3
 	github.com/plasmash/plasmactl-platform v1.5.1
+	github.com/rogpeppe/go-internal v1.14.1
 	github.com/stevenle/topsort v0.2.0
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -145,6 +146,7 @@ require (
 	golang.org/x/term v0.36.0 // indirect
 	golang.org/x/text v0.30.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
+	golang.org/x/tools v0.37.0 // indirect
 	gonum.org/v1/gonum v0.17.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20241007155032-5fefd90f89a9 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241007155032-5fefd90f89a9 // indirect
