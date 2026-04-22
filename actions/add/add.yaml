@@ -2,17 +2,17 @@ runtime: plugin
 action:
   title: Add
   description: Add package dependency to compose.yaml
+  arguments:
+    - name: package
+      title: Package
+      description: Name of the package
+      required: true
   options:
     - name: allow-create
       title: Allow create
       description: Create compose.yaml if not exist
       type: boolean
       default: false
-    - name: package
-      title: Name
-      description: Name of the package
-      type: string
-      default: ""
     - name: type
       title: Type
       description: "Type of the package source: git, http"

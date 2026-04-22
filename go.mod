@@ -116,7 +116,7 @@ require (
 	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/pjbgf/sha1cd v0.5.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/plasmash/plasmactl-topology v1.0.20 // indirect
+	github.com/plasmash/plasmactl-zone v1.0.20 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/pterm/pterm v0.12.82 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
@@ -166,7 +166,7 @@ require (
 	sigs.k8s.io/yaml v1.6.0 // indirect
 )
 
-replace github.com/plasmash/plasmactl-topology => ../plasmactl-topology
+replace github.com/plasmash/plasmactl-zone => ../plasmactl-zone
 
 replace github.com/plasmash/plasmactl-component => ../plasmactl-component
 

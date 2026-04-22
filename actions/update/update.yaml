@@ -1,13 +1,13 @@
 runtime: plugin
 action:
   title: Update
-  description: Update package dependency in compose.yaml
-  options:
+  description: Update package dependency in compose.yaml (omit package for interactive batch update)
+  arguments:
     - name: package
-      title: Name
-      description: Name of the package
-      type: string
-      default: ""
+      title: Package
+      description: Name of the package to update (omit for interactive mode across all packages)
+      required: false
+  options:
     - name: type
       title: Type
       description: "Type of the package source: git, http"

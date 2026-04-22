@@ -93,7 +93,7 @@ func (p *Plugin) DiscoverActions(_ context.Context) ([]*action.Action, error) {
 		ad := &add.Add{
 			WorkingDir:   p.wd,
 			AllowCreate:  input.Opt("allow-create").(bool),
-			Package:      input.Opt("package").(string),
+			Package:      input.Arg("package").(string),
 			Type:         input.Opt("type").(string),
 			Ref:          input.Opt("ref").(string),
 			URL:          input.Opt("url").(string),
@@ -112,9 +112,10 @@ func (p *Plugin) DiscoverActions(_ context.Context) ([]*action.Action, error) {
 	updateAction.SetRuntime(action.NewFnRuntimeWithResult(func(_ context.Context, a *action.Action) (any, error) {
 		input := a.Input()
 		log, term := getLogger(a)
+		pkg, _ := input.Arg("package").(string)
 		u := &update.Update{
 			WorkingDir:   p.wd,
-			Package:      input.Opt("package").(string),
+			Package:      pkg,
 			Type:         input.Opt("type").(string),
 			Ref:          input.Opt("ref").(string),
 			URL:          input.Opt("url").(string),
@@ -135,7 +136,7 @@ func (p *Plugin) DiscoverActions(_ context.Context) ([]*action.Action, error) {
 		log, term := getLogger(a)
 		rm := &remove.Remove{
 			WorkingDir: p.wd,
-			Packages:   action.InputOptSlice[string](input, "packages"),
+			Packages:   action.InputArgSlice[string](input, "packages"),
 		}
 		rm.SetLogger(log)
 		rm.SetTerm(term)
