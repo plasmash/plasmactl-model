@@ -85,12 +85,12 @@ plasmactl model:prepare
 ```
 
 Options:
-- `--compose-dir`: Custom compose directory (default: `.plasma/compose/merged`)
-- `--prepare-dir`: Custom prepare directory (default: `.plasma/prepare`)
+- `--compose-dir`: Custom compose directory (default: `.plasma/model/compose/merged`)
+- `--prepare-dir`: Custom prepare directory (default: `.plasma/model/prepare`)
 - `--clean`: Remove existing prepare directory before preparing
 
 This command:
-- Copies composed model to `.plasma/prepare/`
+- Copies composed model to `.plasma/model/prepare/`
 - Generates Ansible collection structure with `roles/` directories
 - Creates `ansible.cfg` and required symlinks
 - Renames `config/` to `group_vars/` for Ansible compatibility
@@ -154,7 +154,7 @@ The changelog is automatically generated from conventional commits since the las
 ```
 compose.yaml → model:compose → model:prepare → model:bundle
                     ↓               ↓               ↓
-            .plasma/compose/  .plasma/prepare/   dist/*.pm
+        .plasma/model/compose/  .plasma/model/prepare/   dist/*.pm
 ```
 
 1. **Compose**: Fetch packages and merge into unified model

@@ -10,7 +10,6 @@ from skill import Skill
 from sysentity import SysEntity
 from software import Software
 from function import Function
-from helper import Helper
 from builder import Builder
 from library import Library
 from typing import get_type_hints
@@ -270,15 +269,6 @@ def machine_function(obj):
     return d
 
 
-def machine_helper(obj):
-    type_hints = get_type_hints(Helper)
-    d = {}
-    for k, v in obj.items():
-        if k in type_hints:
-            d[k] = v
-    return d
-
-
 def machine_builder(obj):
     type_hints = get_type_hints(Builder)
     d = {}
@@ -387,7 +377,6 @@ class FilterModule(object):
             'entity': machine_entity,
             'software': machine_software,
             'function': machine_function,
-            'helper': machine_helper,
             'builder': machine_builder,
             'library': machine_library,
             'append_timestamp': machine_append_timestamp,

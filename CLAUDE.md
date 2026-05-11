@@ -76,7 +76,7 @@ All actions return structured JSON results via `Result()`. Actions: add, bundle,
 ## Key Conventions
 
 - All git repository operations use `git.PlainOpenWithOptions()` with `EnableDotGitCommonDir: true` to support git worktrees.
-- Paths like `.plasma/compose/` and `.plasma/prepare/` are configurable via CLI flags (`--working-dir`, `--compose-dir`, `--prepare-dir`), not hardcoded.
+- Paths like `.plasma/model/compose/` and `.plasma/model/prepare/` are configurable via CLI flags (`--working-dir`, `--compose-dir`, `--prepare-dir`), not hardcoded.
 - Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/) (fix:, feat:, etc.).
 
 ## Linting

@@ -16,7 +16,6 @@ from skill import Skill
 from sysentity import SysEntity
 from software import Software
 from function import Function
-from helper import Helper
 from builder import Builder
 from library import Library
 from ansible.playbook import Playbook
@@ -70,10 +69,6 @@ class FunctionResource(Resource, Function):
     pass
 
 
-class HelperResource(Resource, Helper):
-    pass
-
-
 class BuilderResource(Resource, Builder):
     pass
 
@@ -111,7 +106,6 @@ class VarsModule(BaseVarsPlugin):
                 'flows': 'flow',
                 'executors': 'executor',
                 'skills': 'skill',
-                'helpers': 'helper',
                 'builders': 'builder',
                 'libraries': 'library',
                 'entities': 'entity',
@@ -129,7 +123,6 @@ class VarsModule(BaseVarsPlugin):
                 'entity': 'ent',
                 'software': 'soft',
                 'function': 'function',
-                'helper': 'hp',
                 'builder': 'build',
                 'library': 'lib',
             }
@@ -143,7 +136,6 @@ class VarsModule(BaseVarsPlugin):
                 'entity': EntityResource,
                 'software': SoftwareResource,
                 'function': FunctionResource,
-                'helper': HelperResource,
                 'builder': BuilderResource,
                 'infrastructure': Resource,
                 'library': LibraryResource,
