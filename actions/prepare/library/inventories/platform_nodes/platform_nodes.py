@@ -144,7 +144,7 @@ class InventoryModule(BaseInventoryPlugin):
             disks = [d["path"] if isinstance(d, dict) else d for d in raw_disks]
             pmeta = node.get("provider_metadata") or {}
 
-            inventory.set_variable(host_id, "hostname", node.get("hostname", ""))
+            inventory.set_variable(host_id, "hostname", node.get("hostname") or node["_filename_id"])
             inventory.set_variable(host_id, "ansible_host", public_ip)
             inventory.set_variable(host_id, "public_ip", public_ip)
             inventory.set_variable(host_id, "private_ip", private_ip)
