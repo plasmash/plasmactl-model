@@ -33,6 +33,42 @@ DOCUMENTATION = """
 CLUSTER_FILE = "/tmp/cluster"  # patched in tests
 
 
+def _flatten_topology(data):
+    """Flatten topology.yaml into dotted zone paths in tree order.
+
+    Mirrors plasmactl-zone topology.Flatten: a root mapping whose values are
+    layer mappings, each layer being a sequence of scalars / single-key
+    mappings.
+    """
+    paths = []
+    if not isinstance(data, dict):
+        return paths
+    for root_key, root_val in data.items():
+        paths.append(root_key)
+        if not isinstance(root_val, dict):
+            continue
+        for layer_key, layer_val in root_val.items():
+            prefix = f"{root_key}.{layer_key}"
+            paths.append(prefix)
+            if isinstance(layer_val, list):
+                paths.extend(_flatten_seq(prefix, layer_val))
+    return paths
+
+
+def _flatten_seq(prefix, seq):
+    paths = []
+    for item in seq:
+        if isinstance(item, str):
+            paths.append(f"{prefix}.{item}")
+        elif isinstance(item, dict):
+            for key, val in item.items():
+                new_prefix = f"{prefix}.{key}"
+                paths.append(new_prefix)
+                if isinstance(val, list):
+                    paths.extend(_flatten_seq(new_prefix, val))
+    return paths
+
+
 class InventoryModule(BaseInventoryPlugin):
     NAME = "platform_nodes"
 
@@ -51,6 +87,12 @@ class InventoryModule(BaseInventoryPlugin):
         cluster = self._read_cluster()
         platform = self._load_platform_yaml(cluster, cwd)
         nodes = self._load_nodes(cluster, cwd)
+
+        # Effective zones = each node's declared zones expanded over topology.yaml
+        # (default-all distribution). Drives group membership + k8s labels below.
+        # The role-specific aggregations in _set_group_variables intentionally
+        # keep using declared zones (explicit designation, e.g. control plane).
+        self.effective_zones = self._compute_effective_zones(nodes, cwd)
 
         self.groups = set()
         self._add_group(inventory, "platform")
@@ -88,6 +130,66 @@ class InventoryModule(BaseInventoryPlugin):
             nodes.append(data)
         return nodes
 
+    def _load_topology_paths(self, cwd):
+        path = os.path.join(cwd, "topology.yaml")
+        try:
+            with open(path) as f:
+                data = yaml.safe_load(f) or {}
+        except FileNotFoundError:
+            return []
+        return _flatten_topology(data)
+
+    def _compute_effective_zones(self, nodes, cwd):
+        """Per-host effective zones via topology default-all distribution.
+
+        Faithful port of plasmactl-node Nodes.Allocations (and the v1
+        platform_nodes distribute_hosts): a zone explicitly declared on any
+        node stays exclusive to its node(s); every other zone in the topology
+        defaults to all nodes. Ancestors are always included. Falls back to
+        declared zones when topology.yaml is absent (legacy behavior).
+        """
+        direct = {n["_filename_id"]: list(n.get("zones") or []) for n in nodes}
+        topo_paths = self._load_topology_paths(cwd)
+        if not topo_paths:
+            return direct
+
+        children = {}
+        for p in topo_paths:
+            if "." in p:
+                children.setdefault(p.rsplit(".", 1)[0], []).append(p)
+
+        def ancestors(path):
+            res = []
+            cur = path
+            while "." in cur:
+                cur = cur.rsplit(".", 1)[0]
+                res.append(cur)
+            return res
+
+        allocs = {h: list(z) for h, z in direct.items()}
+        directly_occupied = {z for zs in direct.values() for z in zs}
+
+        # Downward: a child with no explicit members inherits its parent's hosts.
+        # topo_paths is in tree order (parent before child) so this cascades.
+        for zone in topo_paths:
+            at_zone = [h for h in allocs if zone in allocs[h]]
+            for child in children.get(zone, []):
+                if child not in directly_occupied:
+                    for h in at_zone:
+                        if child not in allocs[h]:
+                            allocs[h].append(child)
+
+        # Upward: every host gains all ancestors of the zones it now holds.
+        for h, zones in allocs.items():
+            for z in list(zones):
+                for anc in ancestors(z):
+                    if anc not in allocs[h]:
+                        allocs[h].append(anc)
+
+        for h in allocs:
+            allocs[h].sort()
+        return allocs
+
     def _add_group(self, inventory, group):
         if group not in self.groups:
             inventory.add_group(group)
@@ -97,7 +199,7 @@ class InventoryModule(BaseInventoryPlugin):
         self.platform_main_groups = []  # NEW: ordered list of top-level children of "platform"
         seen_main = set()
         for node in nodes:
-            for zone in node.get("zones", []) or []:
+            for zone in self.effective_zones.get(node["_filename_id"], []):
                 parts = zone.split(".")
                 for i in range(1, len(parts) + 1):
                     g = ".".join(parts[:i])
@@ -118,7 +220,7 @@ class InventoryModule(BaseInventoryPlugin):
             host_id = node["_filename_id"]
             inventory.add_host(host_id, "platform")
             seen = ["platform"]  # ordered for deterministic labels emission
-            for zone in node.get("zones", []) or []:
+            for zone in self.effective_zones.get(host_id, []):
                 parts = zone.split(".")
                 for i in range(1, len(parts) + 1):
                     g = ".".join(parts[:i])
