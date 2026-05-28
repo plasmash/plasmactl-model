@@ -196,16 +196,12 @@ class InventoryModule(BaseInventoryPlugin):
         networking = platform.get("networking") or {}
         etcd_port = str(networking.get("etcd_port", "2379"))
 
-        # vRack VLAN ID lifted from platform.yaml.infrastructure.private_vlan_id
+        # vRack VLAN ID lifted from platform.yaml.infrastructure.private_vlan_id.
+        # Optional: when absent, the os_flatcar role default (1337) applies. When
+        # present it is emitted as an inventory var, which outranks the role default.
         vlan_id = infra.get("private_vlan_id")
-        if vlan_id is None:
-            print(
-                "ERROR: platform.yaml is missing 'infrastructure.private_vlan_id' "
-                "(required for vRack/RPN VLAN configuration on the os_flatcar template)",
-                file=sys.stderr,
-            )
-            sys.exit(1)
-        inventory.set_variable("platform", "os_flatcar_private_vlan_id", vlan_id)
+        if vlan_id is not None:
+            inventory.set_variable("platform", "os_flatcar_private_vlan_id", vlan_id)
 
         # private VIP = second usable IP of the configured network
         private_vip_network = networking.get("private_vip_network")
