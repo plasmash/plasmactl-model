@@ -3,7 +3,6 @@
 from abc import ABC, abstractmethod
 import os
 import subprocess
-from itertools import compress
 import re
 import concurrent.futures
 from ansible.module_utils.basic import AnsibleModule
@@ -12,6 +11,7 @@ import logging
 from datetime import datetime
 import glob
 import shutil
+import tempfile
 
 try:
     import json
@@ -26,22 +26,22 @@ class VersionFetcher(ABC):
 
 
 class OSVersionFetcher(VersionFetcher):
-    def fetch_version(self, state_builder_machine_resource_default_tag):
-        return self.get_env_vars_with_mrv(state_builder_machine_resource_default_tag)
+    def fetch_version(self, state_machine_resource_default_tag):
+        return self.get_env_vars_with_mrv(state_machine_resource_default_tag)
 
-    def get_env_vars_with_mrv(self, state_builder_machine_resource_default_tag):
+    def get_env_vars_with_mrv(self, state_machine_resource_default_tag):
         result = os.popen("source /etc/profile && env").read()
         lines = [line for line in result.split("\n") if "MRV" in line]
         data = {}
         for line in lines:
             key, value = line.strip().split("=")
             key = key.replace("_MRV", "").lower()
-            data[key] = {state_builder_machine_resource_default_tag: [value]}
+            data[key] = {state_machine_resource_default_tag: [value]}
         return data
 
 
 class ClusterVersionFetcher(VersionFetcher):
-    def fetch_version(self, state_builder_machine_resource_default_tag):
+    def fetch_version(self, state_machine_resource_default_tag):
         resources = [
             "statefulset",
             "sparkapplication",
@@ -56,7 +56,7 @@ class ClusterVersionFetcher(VersionFetcher):
             cmd = f"""/opt/bin/kubectl get {kind} -A -o json | jq '.items[] |
             select(.metadata.annotations.mrn and .metadata.annotations.mrv) |
             {{(.metadata.annotations.mrn | gsub("-"; "_")):
-            {{ "{state_builder_machine_resource_default_tag}" :
+            {{ "{state_machine_resource_default_tag}" :
             [.metadata.annotations.mrv]}}}}' | jq -s 'add' """
             result = subprocess.check_output(cmd, shell=True).decode("utf-8")
             if result.rstrip() != "null":
@@ -64,15 +64,80 @@ class ClusterVersionFetcher(VersionFetcher):
         return data
 
 
+class EntitiesVersionFetcher(VersionFetcher):
+    def fetch_version(self, state_schemas_uri, state_machine_resource_default_tag):
+        data = {}
+        base_url = state_schemas_uri.rstrip('/')
+
+        try:
+            list_cmd = 'curl -s -f "{}/search/artifacts?limit=1000"'.format(base_url)
+            list_result = subprocess.run(
+                list_cmd, shell=True, capture_output=True, text=True, timeout=30
+            )
+
+            if list_result.returncode != 0:
+                logging.error("Failed to fetch Apicurio artifacts: {}".format(list_result.stderr))
+                return data
+
+            response = json.loads(list_result.stdout)
+            artifacts = response.get("artifacts", [])
+
+            entity_ids = [
+                a.get("id") for a in artifacts
+                if "__entities__" in a.get("id", "")
+            ]
+            if not entity_ids:
+                return data
+
+            tmpdir = tempfile.mkdtemp()
+            try:
+                cmd_parts = [
+                    'curl', '-s', '-Z', '--parallel-max', '20', '--http1.1',
+                ]
+                for j, artifact_id in enumerate(entity_ids):
+                    url = "{}/groups/default/artifacts/{}/meta".format(base_url, artifact_id)
+                    outfile = os.path.join(tmpdir, "resp_{}.json".format(j))
+                    cmd_parts.extend(['-o', outfile, url])
+
+                subprocess.run(cmd_parts, capture_output=True, text=True, timeout=60)
+
+                for j, artifact_id in enumerate(entity_ids):
+                    outfile = os.path.join(tmpdir, "resp_{}.json".format(j))
+                    try:
+                        if os.path.exists(outfile) and os.path.getsize(outfile) > 0:
+                            with open(outfile, 'r') as f:
+                                meta = json.load(f)
+                            if "version" in meta:
+                                version = meta["version"]
+                                data[artifact_id] = {
+                                    state_machine_resource_default_tag: [version],
+                                    "current_version": version,
+                                }
+                    except (json.JSONDecodeError, IOError) as e:
+                        logging.warning("Failed to parse entity {}: {}".format(artifact_id, e))
+
+            finally:
+                shutil.rmtree(tmpdir, ignore_errors=True)
+
+        except subprocess.TimeoutExpired:
+            logging.error("Timeout fetching entity versions from Apicurio")
+        except json.JSONDecodeError as e:
+            logging.error("JSON decode error from Apicurio: {}".format(e))
+        except Exception as e:
+            logging.error("Error fetching entity versions: {}".format(e))
+
+        return data
+
+
 class ImagesVersionFetcher(VersionFetcher):
-    def fetch_version(self, state_builder_images_uri, state_builder_images_auth):
+    def fetch_version(self, state_images_uri, state_images_auth):
         # Fetch from Docker Registry
         docker_registry_data = self.fetch_from_registry(
-            state_builder_images_uri, state_builder_images_auth
+            state_images_uri, state_images_auth
         )
 
         # Fetch Images Locally
-        local_images_data = self.fetch_local_images(state_builder_images_uri)
+        local_images_data = self.fetch_local_images(state_images_uri)
         merged_data = {}
         for key, value in docker_registry_data.items():
             if key in local_images_data:
@@ -82,178 +147,141 @@ class ImagesVersionFetcher(VersionFetcher):
         merged_data = local_images_data
         return merged_data
 
-    def fetch_local_images(self, state_builder_images_uri):
-        logging.info("Start to fetch local images")
+    def fetch_local_images(self, state_images_uri):
         try:
-            result = subprocess.run(
-                "sudo crictl images | grep images",
-                shell=True,
-                check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                timeout=30,
-                text=True,
-            )
-
-            if result.stdout:
-                stdout_msg = (
-                    f"STDOUT: {result.stdout}\nCrictl command executed successfully."
-                )
-                logging.info(stdout_msg)
-
-            if result.stderr:
-                stderr_msg = (
-                    f"STDERR: {result.stderr}\nError while executing crictl command."
-                )
-                logging.error(stderr_msg)
+            cmd = 'sudo crictl images -o json | jq "[.images[] | select(.repoTags[]? | contains(\\"{}\\")) | .repoTags[]] | unique"'.format(state_images_uri)
+            result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=30)
+            if result.returncode != 0:
+                logging.error("crictl/jq failed: {}".format(result.stderr))
                 return {}
 
-            return self.process_crictl_output(result.stdout, state_builder_images_uri)
-
+            data = {}
+            for repo_tag in json.loads(result.stdout):
+                if ":" not in repo_tag:
+                    continue
+                image_path, tag = repo_tag.rsplit(":", 1)
+                if "_" not in tag or "__" in tag:
+                    continue
+                tag_id, tag_suffix = tag.split("_", 1)
+                tag_suffix = tag_suffix.replace("-cur", "")
+                mrn = image_path.replace(state_images_uri + "/", "").replace("/", "__").replace("-", "_")
+                if mrn in data:
+                    data[mrn][tag_suffix] = [tag_id]
+                else:
+                    data[mrn] = {tag_suffix: [tag_id]}
+            return data
         except subprocess.TimeoutExpired:
-            logging.error("Subprocess timed out.")
-        except subprocess.CalledProcessError as e:
-            stderr_msg = (
-                f"STDERR: {e.stderr}\nCommand failed with exit status {e.returncode}."
-            )
-            logging.error(stderr_msg)
+            logging.error("crictl timed out")
         except Exception as e:
-            logging.error(f"Error has occurred while fetching local images: {e}")
+            logging.error("Error fetching local images: {}".format(e))
         return {}
 
-    def process_crictl_output(self, stdout, state_builder_images_uri):
-        crictl_output = stdout.strip().split("\n")
-        result = {}
-        crictl_output.pop()
-        for line in crictl_output:
-            columns = line.split()
-            if len(columns) < 2:
-                continue
-            image, tag = columns[0], columns[1]
-            if "cur" not in tag:
-                continue
-            if "_" in tag and "__" not in tag:
-                tag_parts = tag.split("_", 1)
-                if len(tag_parts) == 2:
-                    tag_id, tag_suffix = tag_parts
-                    tag_suffix = tag_suffix.replace("-cur", "")
-                else:
-                    continue
-            else:
-                continue
-            image_parts = image.split("/")
-            mrn = "__".join(
-                [part for part in image_parts if part != state_builder_images_uri]
-            ).replace("-", "_")
-            if mrn in result:
-                result[mrn][tag_suffix] = [tag_id]
-            else:
-                result[mrn] = {tag_suffix: [tag_id]}
-
-        return result
-
-    def fetch_from_registry(self, state_builder_images_uri, state_builder_images_auth):
-        def run_command(command, last):
-            try:
-                resp = (
-                    subprocess.check_output(command, shell=True, timeout=40)
-                    .decode("utf-8")
-                    .strip()
-                    .split("\n")
-                )
-                if last == "normal":
-                    return resp
-                values = json.loads(resp[-1])
-                if "errors" in values:
-                    error_message = json.loads(resp[-1])
-                    for error in error_message["errors"]:
-                        raise ConnectionRefusedError(
-                            f"Error: Command failed with exit code {error['code']}, and message: {error['message']}."
-                        )
-                link_exists, isLinkPresentList = is_present(resp, "link")
-                if link_exists:
-                    last = get_last(isLinkPresentList, resp)
-                return values, last, link_exists
-
-            except subprocess.TimeoutExpired:
-                logging.error("Error: Command timed out after 40 seconds.")
-                sys.exit("Error: Command timed out after 40 seconds.")
-
-        def catalog_expr(n=100, last=""):
-            if last == "":
-                return "/v2/_catalog?n={}".format(n)
-            else:
-                return "'" + last + "'"
-
-        def is_present(responseLines, t_string):
-            isLinkPresentList = list(t_string in a for a in responseLines)
-            return (True in isLinkPresentList, isLinkPresentList)
-
-        def get_last(isLinkPresentList, responseLines):
-            pattern = r"<(.*?)>"
-            match = re.search(
-                pattern, (list(compress(responseLines, isLinkPresentList)))[0]
-            )
-            return match.group(1)
+    def fetch_from_registry(self, state_images_uri, state_images_auth):
+        base_url = "https://{}".format(state_images_uri)
+        auth = state_images_auth
 
         def get_paths():
-            cmd = 'curl -i -s -H "Authorization: Basic {}" '.format(
-                state_builder_images_auth
-            ) + "https://{}".format(state_builder_images_uri)
+            """Fetch catalog with pagination."""
+            cmd = 'curl -k -i -s -H "Authorization: Basic {}" '.format(auth)
             last = ""
             paths = []
             link_exists = True
             try:
                 while link_exists:
-                    values, last, link_exists = run_command(
-                        cmd + catalog_expr(n=10, last=last), last
-                    )
-                    paths = paths + values["repositories"]
+                    catalog_url = "/v2/_catalog?n=100" if last == "" else "'" + last + "'"
+                    resp = subprocess.check_output(
+                        cmd + base_url + catalog_url,
+                        shell=True, timeout=40
+                    ).decode("utf-8").strip().split("\n")
+                    values = json.loads(resp[-1])
+                    if "errors" in values:
+                        break
+                    paths.extend(values.get("repositories", []))
+                    link_exists = False
+                    for line in resp:
+                        if "link" in line.lower():
+                            match = re.search(r"<(.*?)>", line)
+                            if match:
+                                last = match.group(1)
+                                link_exists = True
+                                break
             except Exception as e:
-                logging.error(f"exception in fetching links {e}")
-                pass
+                logging.error("Exception fetching catalog: {}".format(e))
             return paths
 
-        paths = get_paths()
-        cmd = 'curl -s -H "Authorization: Basic {}" '.format(
-            state_builder_images_auth
-        ) + "https://{}".format(state_builder_images_uri)
-        command_lines = [cmd + "/v2/" + p + "/tags/list" for p in paths]
-        results = {}
-        with concurrent.futures.ThreadPoolExecutor(max_workers=50) as executor:
-            futures = {
-                executor.submit(run_command, command, "normal"): command
-                for command in command_lines
-            }
-            concurrent.futures.wait(futures)
+        def fetch_batch(batch_paths, tmpdir):
+            """Run curl -Z --http2 for a batch."""
+            cmd_parts = [
+                'curl', '-k', '-s',
+                '--http2',
+                '-Z',
+                '--parallel-max', '100',
+                '-H', 'Authorization: Basic {}'.format(auth),
+            ]
+            for j, path in enumerate(batch_paths):
+                url = "{}/v2/{}/tags/list".format(base_url, path)
+                outfile = os.path.join(tmpdir, "resp_{}.json".format(j))
+                cmd_parts.extend(['-o', outfile, url])
 
-            for future in concurrent.futures.as_completed(futures):
-                res = future.result()
-                result = json.loads(res[0])
-                if result["tags"] is None:
-                    result["tags"] = []
-                exist, isCurrentTagPresentList = is_present(result["tags"], "cur")
-                current_tag_dict = {}
-                if exist:
-                    for i, cur_bool in enumerate(isCurrentTagPresentList):
-                        cur = result["tags"][i]
-                        if "_" in cur and "__" not in cur:
-                            prefix, suffix = cur.split("_")[0], (
-                                cur.split("_")[1]
-                            ).replace("-cur", "")
+            subprocess.run(cmd_parts, capture_output=True, text=True, timeout=60)
+
+        def parse_batch(batch_paths, tmpdir):
+            """Parse output files from a completed batch."""
+            batch_results = {}
+            for j, path in enumerate(batch_paths):
+                outfile = os.path.join(tmpdir, "resp_{}.json".format(j))
+                try:
+                    if not os.path.exists(outfile) or os.path.getsize(outfile) == 0:
+                        continue
+                    with open(outfile, 'r') as f:
+                        data = json.load(f)
+                    if "errors" in data or "name" not in data:
+                        continue
+                    tags = data.get("tags") or []
+                    current_tag_dict = {}
+                    for tag in tags:
+                        if "_" in tag and "__" not in tag:
+                            prefix, suffix = tag.split("_")[0], tag.split("_")[1].replace("-cur", "")
                             if suffix in current_tag_dict:
-                                current_tag_dict[suffix].append(prefix)
+                                # Dedup: both VERSION_default and VERSION_default-cur
+                                # produce the same prefix
+                                if prefix not in current_tag_dict[suffix]:
+                                    current_tag_dict[suffix].append(prefix)
                             else:
                                 current_tag_dict[suffix] = [prefix]
-                            if cur_bool:
+                            if tag.endswith("-cur"):
                                 current_tag_dict["current_version"] = prefix
-                        else:
-                            continue
-                resource_name = result["name"].replace("/", "__").replace("-", "_")
-                if resource_name in results:
-                    results[resource_name].update(current_tag_dict)
-                else:
-                    results[resource_name] = current_tag_dict
+                    resource_name = data["name"].replace("/", "__").replace("-", "_")
+                    batch_results[resource_name] = current_tag_dict
+                except (json.JSONDecodeError, IOError) as e:
+                    logging.warning("Failed to parse {}: {}".format(path, e))
+            return batch_results
+
+        paths = get_paths()
+
+        results = {}
+        batch_size = 100
+        max_retries = 3
+        for i in range(0, len(paths), batch_size):
+            batch_paths = paths[i:i + batch_size]
+            for attempt in range(1, max_retries + 1):
+                tmpdir = tempfile.mkdtemp()
+                try:
+                    fetch_batch(batch_paths, tmpdir)
+                    results.update(parse_batch(batch_paths, tmpdir))
+                    break
+                except subprocess.TimeoutExpired:
+                    logging.error("Curl batch {} attempt {}/{} timed out".format(
+                        i // batch_size, attempt, max_retries))
+                except Exception as e:
+                    logging.error("Curl batch {} attempt {}/{} error: {}".format(
+                        i // batch_size, attempt, max_retries, e))
+                finally:
+                    shutil.rmtree(tmpdir, ignore_errors=True)
+            else:
+                logging.error("Curl batch {} failed after {} attempts, skipping".format(
+                    i // batch_size, max_retries))
+
         return results
 
 
@@ -270,23 +298,36 @@ class StateCreator:
                 "mrv_cur": old_version.get(
                     "current_version", old_version.get(tag, None)
                 ),
-                "exists": old_version.get(tag, []) is not None,
+                "exists": bool(old_version.get(tag, [])),
                 "fresh": new_version in old_version.get(tag, []),
                 "build": new_version not in old_version.get(tag, []),
             }
         }
 
-    def create_state(self, state_builder_platform_components):
+    def create_state(self, state_platform_components):
         current_states = self.merged_data
         states = {}
-        for mrn, comp in state_builder_platform_components.items():
+        for mrn, comp in state_platform_components.items():
             try:
                 mrv = comp["mrv"]
                 states[mrn] = comp
+
                 for tag in comp["mrt"]:
-                    if mrn in list(current_states.keys()) and tag in list(
-                        current_states[mrn].keys()
-                    ):
+                    mrk = comp.get("mrk", "")
+
+                    # Helpers are local Ansible tools - no state tracking needed
+                    if mrk == "helper":
+                        state = {
+                            tag: {
+                                "mrv": [mrv],
+                                "mrv_cur": mrv,
+                                "exists": True,
+                                "fresh": True,
+                                "build": False,
+                            }
+                        }
+                    elif mrn in current_states and tag in current_states.get(mrn, {}):
+                        # Found in merged_data - compare versions
                         machine_mrsn = comp["mrsn"].replace("-", "_")
                         states[mrn][
                             "password"
@@ -298,6 +339,7 @@ class StateCreator:
                             new_version=mrv, tag=tag, old_version=current_version
                         )
                     else:
+                        # Not in merged_data - needs building
                         state = self.state_helper(tag=tag, new_version=mrv)
 
                     if "state" in states[mrn]:
@@ -305,7 +347,7 @@ class StateCreator:
                     else:
                         states[mrn]["state"] = state
             except Exception as e:
-                print(e)
+                logging.error("EXCEPTION for {}: {}".format(mrn, e))
         return states
 
 
@@ -338,10 +380,11 @@ def main():
     cluster_fetcher = ClusterVersionFetcher()
 
     module_args = dict(
-        state_builder_platform_components=dict(type=dict, required=True),
-        state_builder_images_uri=dict(type="str", required=True),
-        state_builder_machine_resource_default_tag=dict(type="str", required=True),
-        state_builder_images_auth=dict(type="str", required=True),
+        state_platform_components=dict(type=dict, required=True),
+        state_images_uri=dict(type="str", required=True),
+        state_schemas_uri=dict(type="str", required=True),
+        state_machine_resource_default_tag=dict(type="str", required=True),
+        state_images_auth=dict(type="str", required=True),
     )
     result = {}
     module = AnsibleModule(argument_spec=module_args, supports_check_mode=True)
@@ -353,7 +396,7 @@ def main():
     states = {}
     try:
         os_data = os_fetcher.fetch_version(
-            module.params["state_builder_machine_resource_default_tag"]
+            module.params["state_machine_resource_default_tag"]
         )
         with open(folder_path + "os_data", "w") as json_file:
             json.dump(os_data, json_file, indent=4)
@@ -367,7 +410,7 @@ def main():
             module.warn("Warning: OS data is empty. Skipping update")
 
         cluster_data = cluster_fetcher.fetch_version(
-            module.params["state_builder_machine_resource_default_tag"]
+            module.params["state_machine_resource_default_tag"]
         )
         with open(folder_path + "cluster_data", "w") as json_file:
             json.dump(cluster_data, json_file, indent=4)
@@ -380,8 +423,8 @@ def main():
             module.warn("Warning: cluster data is empty. Skipping update")
 
         images_data = images_fetcher.fetch_version(
-            module.params["state_builder_images_uri"],
-            module.params["state_builder_images_auth"],
+            module.params["state_images_uri"],
+            module.params["state_images_auth"],
         )
         with open(folder_path + "images_data", "w") as json_file:
             json.dump(images_data, json_file, indent=4)
@@ -391,6 +434,20 @@ def main():
         else:
             module.warn("Warning: Images data is None. Skipping update")
 
+        if module.params.get("state_schemas_uri"):
+            entities_fetcher = EntitiesVersionFetcher()
+            entities_data = entities_fetcher.fetch_version(
+                module.params["state_schemas_uri"],
+                module.params["state_machine_resource_default_tag"],
+            )
+            with open(folder_path + "entities_data", "w") as json_file:
+                json.dump(entities_data, json_file, indent=4)
+            if entities_data:
+                merged_data.update(entities_data)
+                logging.info("Fetched {} entity versions from Apicurio".format(len(entities_data)))
+            else:
+                module.warn("Warning: Entities data is empty")
+
         with open(folder_path + "merge_data", "w") as json_file:
             json.dump(merged_data, json_file, indent=4)
         if images_data == {}:
@@ -398,36 +455,50 @@ def main():
         if merged_data != {}:
             state_creator = StateCreator(merged_data)
             states = state_creator.create_state(
-                module.params["state_builder_platform_components"]
+                module.params["state_platform_components"]
             )
 
-        # Create a new state file
+        # Create a new state file (atomic write)
         new_file_path = "/tmp/vars_with_state.json"
 
-        # Move the old vars_with_state.json to the log folder if it exists
+        # Backup the old vars_with_state.json to the log folder if it exists
         if os.path.exists(new_file_path):
-            # Get the creation time of the existing file
             creation_time = os.path.getctime(new_file_path)
             timestamp = datetime.fromtimestamp(creation_time).strftime("%Y%m%d_%H%M%S")
             old_file_path = os.path.join(folder_path, f"{prefix}_{timestamp}.json")
-            shutil.move(new_file_path, old_file_path)
-            # Manage the files to keep only the last `max_files` files in the log folder
+            shutil.copy(new_file_path, old_file_path)
             manage_files(folder_path, prefix, max_files)
 
-        # Write the new state to /tmp/vars_with_state.json
-        with open(new_file_path, "w") as json_file:
-            json.dump(states, json_file, indent=4)
+        # Write to temp file, then atomic rename (prevents partial state files)
+        tmp_fd, tmp_path = tempfile.mkstemp(
+            dir=os.path.dirname(new_file_path), suffix=".tmp"
+        )
+        try:
+            with os.fdopen(tmp_fd, "w") as json_file:
+                json.dump(states, json_file, indent=4)
+            os.rename(tmp_path, new_file_path)
+        except Exception:
+            os.unlink(tmp_path)
+            raise
 
         module.exit_json(**states)
     except subprocess.CalledProcessError as e:
         if merged_data != {}:
             state_creator = StateCreator(merged_data)
             states = state_creator.create_state(
-                module.params["state_builder_platform_components"]
+                module.params["state_platform_components"]
             )
         new_file_path = "/tmp/vars_with_state.json"
-        with open(new_file_path, "w") as json_file:
-            json.dump(states, json_file, indent=4)
+        tmp_fd, tmp_path = tempfile.mkstemp(
+            dir=os.path.dirname(new_file_path), suffix=".tmp"
+        )
+        try:
+            with os.fdopen(tmp_fd, "w") as json_file:
+                json.dump(states, json_file, indent=4)
+            os.rename(tmp_path, new_file_path)
+        except Exception:
+            os.unlink(tmp_path)
+            raise
         module.warn(str(e))
         module.exit_json(**states)
     except Exception as e:
