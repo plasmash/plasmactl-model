@@ -7,10 +7,10 @@ require (
 	github.com/charmbracelet/huh v0.8.0
 	github.com/go-git/go-git/v5 v5.16.3
 	github.com/launchrctl/keyring v0.9.0
-	github.com/launchrctl/launchr v0.22.0
+	github.com/launchrctl/launchr v0.23.0
 	github.com/leodido/go-conventionalcommits v0.12.0
-	github.com/plasmash/plasmactl-component v1.2.3
-	github.com/plasmash/plasmactl-platform v1.5.1
+	github.com/plasmash/plasmactl-component v1.3.0
+	github.com/plasmash/plasmactl-platform v1.8.0
 	github.com/rogpeppe/go-internal v1.14.1
 	github.com/stevenle/topsort v0.2.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -165,11 +165,3 @@ require (
 	sigs.k8s.io/structured-merge-diff/v6 v6.3.0 // indirect
 	sigs.k8s.io/yaml v1.6.0 // indirect
 )
-
-replace github.com/plasmash/plasmactl-zone => ../plasmactl-zone
-
-replace github.com/plasmash/plasmactl-component => ../plasmactl-component
-
-replace github.com/plasmash/plasmactl-platform => ../plasmactl-platform
-
-replace github.com/launchrctl/launchr => ../launchr
