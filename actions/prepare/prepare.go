@@ -154,22 +154,28 @@ func (p *Prepare) Execute() error {
 	return nil
 }
 
-// copyComposeImage copies compose image to prepare directory, excluding hidden directories
+// copyComposeImage copies compose image to prepare directory, excluding top-level hidden
+// directories
 func (p *Prepare) copyComposeImage() error {
 	return filepath.Walk(p.ComposeDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 
-		// Skip hidden directories
-		if info.IsDir() && strings.HasPrefix(info.Name(), ".") && path != p.ComposeDir {
-			return filepath.SkipDir
-		}
-
 		// Get relative path
 		relPath, err := filepath.Rel(p.ComposeDir, path)
 		if err != nil {
 			return err
+		}
+
+		// Skip tooling directories at the top level of the compose image (.git, .idea,
+		// .claude, .plasmactl…). Dot-directories deeper in the tree belong to components
+		// and must be preserved: their names are dictated by the tools that read them
+		// (s6's .s6-svscan, Storybook's .storybook) and cannot be renamed.
+		if info.IsDir() && relPath != "." &&
+			!strings.ContainsRune(relPath, filepath.Separator) &&
+			strings.HasPrefix(info.Name(), ".") {
+			return filepath.SkipDir
 		}
 
 		destPath := filepath.Join(p.PrepareDir, relPath)
